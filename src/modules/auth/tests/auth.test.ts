@@ -3,7 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
 import { env } from '../../../config/env';
-import { AuthDbTables, AuthJwtTokenType, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
+import { AuthAuthenticationErrorCode, AuthBadRequestErrorCode, AuthDbTables, AuthJwtTokenType, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
 import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
@@ -129,9 +129,11 @@ describe('Auth', () => {
 
     expect(roles.data?.length).toBe(1);
     expect(roles).toEqual(
-      expect.arrayContaining([
-        roleStr,
-      ]),
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          roleStr,
+        ]),
+      }),
     );
   });
 
@@ -176,9 +178,11 @@ describe('Auth', () => {
 
     expect(roles2.data.length).toBe(1);
     expect(roles2).toEqual(
-      expect.arrayContaining([
-        roleStrThree,
-      ]),
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          roleStrThree,
+        ]),
+      })
     );
   });
 
@@ -199,10 +203,12 @@ describe('Auth', () => {
 
     expect(permissions.data.length).toBe(2);
     expect(permissions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ permission_id: 5, read: PermissionLevel.OWN }),
-        expect.objectContaining({ permission_id: 1, read: PermissionLevel.OWN }),
-      ]),
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({ permission_id: 5, read: PermissionLevel.OWN }),
+          expect.objectContaining({ permission_id: 1, read: PermissionLevel.OWN }),
+        ]),
+      })
     );
   });
 
@@ -238,14 +244,16 @@ describe('Auth', () => {
     );
 
     expect(tokenEntry).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          token: token,
-          status: DbModelStatus.ACTIVE,
-          user_id: null,
-          subject: AuthJwtTokenType.USER_SIGN_UP,
-        })
-      ])
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            token: token,
+            status: DbModelStatus.ACTIVE,
+            user_id: null,
+            subject: AuthJwtTokenType.USER_SIGN_UP,
+          })
+        ])
+      })
     );
   });
   
@@ -282,14 +290,16 @@ describe('Auth', () => {
     );
 
     expect(tokenEntry).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          token: token,
-          status: DbModelStatus.ACTIVE,
-          user_id: user.id,
-          subject: AuthJwtTokenType.USER_SIGN_UP,
-        })
-      ])
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            token: token,
+            status: DbModelStatus.ACTIVE,
+            user_id: user.id,
+            subject: AuthJwtTokenType.USER_SIGN_UP,
+          })
+        ])
+      })
     );
 
   });
@@ -328,14 +338,16 @@ describe('Auth', () => {
     );
 
     expect(tokenEntry).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          token,
-          status: 9,
-          user_id: user.id,
-          subject: AuthJwtTokenType.USER_SIGN_UP,
-        })
-      ])
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            token,
+            status: 9,
+            user_id: user.id,
+            subject: AuthJwtTokenType.USER_SIGN_UP,
+          })
+        ])
+      })
     );
 
   });
@@ -408,7 +420,7 @@ describe('Auth', () => {
 
     const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
 
-    expect(!!isValid).toBe(false);
+    expect(!!isValid.data).toBe(false);
 
   });
 
@@ -445,7 +457,7 @@ describe('Auth', () => {
 
     const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
 
-    expect(!!isValid).toBe(false);
+    expect(!!isValid.data).toBe(false);
 
   });
 
@@ -463,7 +475,7 @@ describe('Auth', () => {
     })
     const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
 
-    expect(!!isValid).toBe(false);
+    expect(!!isValid.data).toBe(false);
 
   });
 
@@ -500,7 +512,7 @@ describe('Auth', () => {
 
     const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
 
-    expect(!!isValid).toBe(false);
+    expect(!!isValid.data).toBe(false);
 
   });
 
@@ -509,7 +521,7 @@ describe('Auth', () => {
 
     const isValid = await auth.validateToken('badtoken', AuthJwtTokenType.USER_SIGN_UP);
 
-    expect(!!isValid).toBe(false);
+    expect(!!isValid.data).toBe(false);
 
   });
 
@@ -527,19 +539,24 @@ describe('Auth', () => {
     const newToken = await auth.refreshToken(token.data);
     const contents = jwt.decode(token.data);
     expect(contents).toEqual(
-      expect.objectContaining(
-        {
-          ...obj,
-        })
+      expect.objectContaining({
+        data: expect.objectContaining(
+          {
+            ...obj,
+          }
+        )
+      })
     );
     const isValid = await auth.validateToken(newToken.data, AuthJwtTokenType.USER_SIGN_UP);
 
     expect(!!isValid.data).toBe(true);
     expect(isValid).toEqual(
-      expect.objectContaining(
-        {
-          ...obj,
-        })
+      expect.objectContaining({
+        data: expect.objectContaining(
+          {
+            ...obj,
+          })
+      })
     );
   });
 
@@ -555,7 +572,7 @@ describe('Auth', () => {
     const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, null);
     await auth.invalidateToken(token.data)
     const newToken = await auth.refreshToken(token.data);
-    expect(newToken).toBe(null);
+    expect(newToken.data).toBe(null);
   });
 
   it('Add new role', async () => {
@@ -607,7 +624,7 @@ describe('Auth', () => {
     const role1 = await auth.createRole(roleStrOne);
     expect(role1.data).toBe(true);
     const role2 = await auth.createRole(roleStrOne);
-    expect(role2).toBe(false);
+    expect(role2.data).toBe(false);
 
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`,
@@ -842,7 +859,7 @@ describe('Auth', () => {
     };
     const user = await auth.createAuthUser(obj);
     expect(!!user.data).toBe(true);
-    expect(user).toEqual(
+    expect(user.data).toEqual(
       expect.objectContaining(obj)
     );
   });
@@ -895,7 +912,7 @@ describe('Auth', () => {
     const noAuthUser = await auth.getAuthUserById(user.data.id);
     expect(noAuthUser.status).toBe(DbModelStatus.DELETED);
   });
-  it('Login - OK', async () => {
+  it.only('Login - OK', async () => {
     const auth = new Auth();
 
     const obj = {
@@ -951,9 +968,12 @@ describe('Auth', () => {
       ]),
     );
 
-    expect(token).toEqual(null)
+    expect(token.status).toEqual(false)
+    expect(token.errors).toEqual(
+      expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED])
+    )
   });
-  it.only('Query should join permission actions', async () => {
+  it('Query should join permission actions', async () => {
     const user = await insertAuthUser();
 
     const roleOne = faker.address.city();
