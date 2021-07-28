@@ -3,6 +3,7 @@ import { Token } from './modules/token/token.model';
 import { RolePermission } from './modules/auth-user/models/role-permission.model';
 import { Role } from './modules/auth-user/models/role.model';
 import { Auth } from './modules/auth/auth';
+import { PermissionPass } from './modules/auth-user/decorators/permission.decorator';
 import {
   AuthDbTables,
   PermissionType,
@@ -10,6 +11,7 @@ import {
   AuthValidatorErrorCode,
   AuthBadRequestErrorCode,
   AuthAuthenticationErrorCode,
+  AuthJwtTokenType,
 } from './config/types';
 
 export {
@@ -25,4 +27,6 @@ export {
   AuthValidatorErrorCode,
   AuthBadRequestErrorCode,
   AuthAuthenticationErrorCode,
+  AuthJwtTokenType,
+  PermissionPass
 };

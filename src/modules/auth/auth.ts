@@ -233,7 +233,7 @@ export class Auth implements IAuth {
   }
   async generateToken(data: any, subject: string, userId?: number, exp?: any): Promise<IAuthResponse<string>> {
     const tokenObj = new Token({
-      data,
+      payload: data,
       subject,
       user_id: userId
     });

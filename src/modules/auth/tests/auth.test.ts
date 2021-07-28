@@ -871,9 +871,9 @@ describe('Auth', () => {
       id: faker.datatype.number(10_000_000),
       username: faker.internet.userName(),
     };
-    const user = await auth.createAuthUser(obj);
-    expect(user.status).toBe(false);
-    expect(user.errors).toBe(
+    const res = await auth.createAuthUser(obj);
+    expect(res.status).toBe(false);
+    expect(res.errors).toEqual(
       expect.arrayContaining([AuthValidatorErrorCode.USER_EMAIL_NOT_PRESENT])
     )
   });
@@ -891,10 +891,10 @@ describe('Auth', () => {
     obj.username = 'personsonson';
     const updatedAuthUser = await auth.updateAuthUser(obj);
     expect(!!updatedAuthUser.data).toBe(true);
-    expect(user).not.toEqual(
+    expect(user.data).not.toEqual(
       expect.objectContaining(obj)
     );
-    expect(updatedAuthUser).toEqual(
+    expect(updatedAuthUser.data).toEqual(
       expect.objectContaining(obj)
     );
   });
@@ -912,7 +912,7 @@ describe('Auth', () => {
     const noAuthUser = await auth.getAuthUserById(user.data.id);
     expect(noAuthUser.status).toBe(DbModelStatus.DELETED);
   });
-  it.only('Login - OK', async () => {
+  it('Login - OK', async () => {
     const auth = new Auth();
 
     const obj = {
