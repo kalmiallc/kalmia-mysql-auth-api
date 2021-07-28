@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/member-ordering */
 import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
-import { AppLogger, BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
-import { DbTables } from '../../config/types';
+import { AuthDbTables } from '../../config/types';
 import * as jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
 
 
-export class JWT extends BaseModel {
+export class Token extends BaseModel {
+  tableName = AuthDbTables.TOKENS;
 
   @prop({
     parser: { resolver: integerParser() },
@@ -52,11 +54,7 @@ export class JWT extends BaseModel {
   })
   public payload: any;
 
-  tableName = DbTables.TOKENS;
-
-  
-
-  public async generateToken(exp: string | number = '1d'): Promise<string> {
+  public async generate(exp: string | number = '1d'): Promise<string> {
     try {
       if (!exp) {
         exp = '1d';
@@ -81,9 +79,9 @@ export class JWT extends BaseModel {
       this.expiresAt = new Date(payload.exp * 1000 + Math.floor(Math.random() * 500));
 
       // insert token into database
-      const createQuery = `INSERT INTO ${DbTables.TOKENS} (token, status, user_id, subject, expiresAt)
+      const createQuery = `INSERT INTO \`${this.tableName}\` (token, status, user_id, subject, expiresAt)
       VALUES
-        (@token, @status, @userId, @subject, @expiresAt)`;
+        (@token, @status, @user_id, @subject, @expiresAt)`;
       const sqlUtil = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
       const conn = await sqlUtil.start();
       await sqlUtil.paramExecute(
@@ -102,7 +100,6 @@ export class JWT extends BaseModel {
       await sqlUtil.commit(conn);
       return this.token;
     } catch (e) {
-      AppLogger.error('jwt.model.ts', 'generateToken', 'Error while generating token', e);
       return null;
     }
   }
@@ -118,18 +115,17 @@ export class JWT extends BaseModel {
 
       const query = `
         SELECT t.token, t.user_id, t.status, t.subject, t.expiresAt
-        FROM ${DbTables.TOKENS} t
+        FROM \`${this.tableName}\` t
         WHERE t.token = @token
           AND t.expiresAt > CURRENT_TIMESTAMP
-          AND t.status < 9
+          AND t.status < \`${DbModelStatus.DELETED}\`
       `;
       const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { token: this.token });
       if (data && data.length) {
         this.populate(data[0], PopulateFor.DB);
-        return await this.generateToken(this.exp);
+        return await this.generate(this.exp);
       }
     } catch (e) {
-      AppLogger.error('jwt.model.ts', 'refresh', 'Error while refreshing token', e);
     }
     return null;
   }
@@ -149,8 +145,29 @@ export class JWT extends BaseModel {
       return this.reset();
     }
   }
+  public async invalidateToken(): Promise<boolean> {
+    const sqlUtil = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
+    const conn = await sqlUtil.start();
+    try {
+      const updateQuery = `UPDATE \`${this.tableName}\`  t
+        SET t.status = 9
+        WHERE t.token = @token`;
+      const updateRes = await sqlUtil.paramExecute(
+        updateQuery,
+        {
+          token: this.token
+        },
+        conn
+      );
+      await sqlUtil.commit(conn);
+      return true;
+    } catch (e) {
+      await sqlUtil.rollback(conn);
+    }
+    return false;
+  }
 
-  public async validate(): Promise<any> {
+  public async validateToken(): Promise<any> {
     if (!this.token) {
       return null;
     }
@@ -160,11 +177,11 @@ export class JWT extends BaseModel {
       });
       if (payload) {
         const query = `
-          SELECT t.token, t.user_id userId, t.status, t.expireTime
-          FROM ${DbTables.TOKENS} t
+          SELECT t.token, t.user_id, t.status, t.expireTime
+          FROM \`${this.tableName}\` t
           WHERE t.token = @token
             AND t.expireTime > CURRENT_TIMESTAMP
-            AND t.status < 9
+            AND t.status < \`${DbModelStatus.DELETED}\`
         `;
         const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { token: this.token });
         if (data && data.length) {
@@ -172,7 +189,6 @@ export class JWT extends BaseModel {
         }
       }
     } catch (e) {
-      AppLogger.error('jwt.model.ts', 'validate', 'Error while validating token', e);
     }
     return null;
   }

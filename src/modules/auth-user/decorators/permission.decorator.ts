@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import { PermissionLevel, PermissionType } from '../../../config/types';
 
 export interface PermissionPass {
-  permission: string;
+  permission: number;
   type: PermissionType;
   level?: PermissionLevel;
 }

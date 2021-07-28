@@ -5,15 +5,17 @@ import * as bcrypt from 'bcryptjs';
 import { PoolConnection, Pool } from 'mysql2/promise';
 import { Role } from './role.model';
 import { RolePermission } from './role-permission.model';
-import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
-import { DbTables } from '../../config/types';
+import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldValue } from 'kalmia-sql-lib';
+import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
-import { PermissionPass } from './decorators/permission.decorator';
+import { PermissionPass } from '../decorators/permission.decorator';
 
 /**
  * User model.
  */
-export class UserMySql extends BaseModel {
+export class AuthUser extends BaseModel {
+
+  tableName = AuthDbTables.USERS;
   /**
    * id
    */
@@ -24,13 +26,13 @@ export class UserMySql extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: ValidatorErrorCode.USER_ID_NOT_PRESENT
+        code: AuthValidatorErrorCode.USER_ID_NOT_PRESENT
       },
     ],
     handlers: [
       {
         resolver: uniqueFieldValue('user', 'id'),
-        code: ValidatorErrorCode.USER_ID_ALREADY_TAKEN
+        code: AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
       }
     ],
     fakeValue() {
@@ -60,17 +62,17 @@ export class UserMySql extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: ValidatorErrorCode.USER_USERNAME_NOT_PRESENT
+        code: AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT
       },
       {
         resolver: (v?: any) => !emailValidator()(v),
-        code: ValidatorErrorCode.USER_USERNAME_NOT_VALID
+        code: AuthValidatorErrorCode.USER_USERNAME_NOT_VALID
       }
     ],
     handlers: [
       {
         resolver: uniqueFieldValue('user', 'username'),
-        code: ValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
+        code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
       }
     ],
   })
@@ -79,7 +81,7 @@ export class UserMySql extends BaseModel {
   /**
    * User's collection.
    */
-  collectionName: DbTables = DbTables.USERS;
+  collectionName: AuthDbTables = AuthDbTables.USERS;
 
   /**
    * User's email property definition.
@@ -93,17 +95,17 @@ export class UserMySql extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: ValidatorErrorCode.USER_EMAIL_NOT_PRESENT
+        code: AuthValidatorErrorCode.USER_EMAIL_NOT_PRESENT
       },
       {
         resolver: emailValidator(),
-        code: ValidatorErrorCode.USER_EMAIL_NOT_VALID
+        code: AuthValidatorErrorCode.USER_EMAIL_NOT_VALID
       }
     ],
     handlers: [
       {
         resolver: uniqueFieldValue('user', 'email'),
-        code: ValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN
+        code: AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN
       }
     ],
     fakeValue() {
@@ -121,7 +123,7 @@ export class UserMySql extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: ValidatorErrorCode.USER_PASSWORD_NOT_PRESENT
+        code: AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT
       }
     ],
     fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
@@ -175,8 +177,6 @@ export class UserMySql extends BaseModel {
   })
   public permissions: RolePermission[];
 
-  tableName = DbTables.USERS;
-
   /**
    * Tells if the provided password is valid.
    *
@@ -217,19 +217,11 @@ export class UserMySql extends BaseModel {
     return this;
   }
 
-  public async populateById(id: any): Promise<any> {
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `
-      SELECT * FROM ${DbTables.USERS}
-      WHERE id = @id
-    `,
-      { id }
-    );
-
-    if (!res.length) {
+  public async populateById(id: number): Promise<this> {
+    await super.populateById(id);
+    if (!this.id) {
       return this.reset();
     }
-    this.populate(res[0]);
     await this.getRoles();
     await this.getPermissions();
     return this;
@@ -241,7 +233,7 @@ export class UserMySql extends BaseModel {
     }
     const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
       `
-      UPDATE \`${DbTables.USERS}\`
+      UPDATE \`${AuthDbTables.USERS}\`
       SET status = @status
       WHERE id = @id
     `,
@@ -274,7 +266,7 @@ export class UserMySql extends BaseModel {
   public async addRole(roleId: number, conn?: PoolConnection) {
     await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
-      INSERT IGNORE INTO ${DbTables.USER_ROLES} (user_id, role_id)
+      INSERT IGNORE INTO ${AuthDbTables.USER_ROLES} (user_id, role_id)
       VALUES (@userId, @roleId)
     `,
       { userId: this.id, roleId },
@@ -303,12 +295,13 @@ export class UserMySql extends BaseModel {
       SELECT 
         r.*, 
         rp.*
-      FROM ${DbTables.ROLES} r
-      JOIN ${DbTables.USER_ROLES} ur
+      FROM ${AuthDbTables.ROLES} r
+      JOIN ${AuthDbTables.USER_ROLES} ur
       ON ur.role_id = r.id
-      JOIN ${DbTables.ROLE_PERMISSIONS} rp
+      JOIN ${AuthDbTables.ROLE_PERMISSIONS} rp
       ON rp.role_id = r.id
       WHERE ur.user_id = @userId
+        AND r.status < \`${DbModelStatus.DELETED}\`
       ORDER BY r.id;
     `,
       { userId: this.id },
@@ -339,10 +332,13 @@ export class UserMySql extends BaseModel {
         IFNULL(MAX(rp.read), 0) \`read\`,
         IFNULL(MAX(rp.write), 0) \`write\`,
         IFNULL(MAX(rp.execute), 0) \`execute\`
-      FROM ${DbTables.USERS} u
-      JOIN ${DbTables.USER_ROLES} ur
+      FROM ${AuthDbTables.USERS} u
+      JOIN ${AuthDbTables.USER_ROLES} ur
         ON u.id = ur.user_id
-      JOIN ${DbTables.ROLE_PERMISSIONS} rp
+      JOIN ${AuthDbTables.ROLES} r
+        ON ur.role_id = r.id
+          AND ur.status < \`${DbModelStatus.DELETED}\`
+      JOIN ${AuthDbTables.ROLE_PERMISSIONS} rp
         ON ur.role_id = rp.role_id
       WHERE ur.user_id = @userId
       GROUP BY rp.permission_id;

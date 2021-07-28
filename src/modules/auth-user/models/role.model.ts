@@ -1,13 +1,15 @@
+/* eslint-disable @typescript-eslint/member-ordering */
 import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
 import { BaseModel, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { Pool, PoolConnection } from 'mysql2/promise';
-import { DbTables } from '../../config/types';
-import { PermissionPass } from './decorators/permission.decorator';
+import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
+import { PermissionPass } from '../decorators/permission.decorator';
 import { RolePermission } from './role-permission.model';
 
 export class Role extends BaseModel {
+  tableName: AuthDbTables = AuthDbTables.ROLES;
   /**
    * id
    */
@@ -21,12 +23,7 @@ export class Role extends BaseModel {
       SerializeFor.PROFILE,
       SerializeFor.ADMIN,
     ],
-    validators: [
-      {
-        resolver: presenceValidator(),
-        code: ValidatorErrorCode.DEFAULT_VALIDATION_ERROR,
-      },
-    ],
+    validators: [],
   })
   public id: number;
 
@@ -48,7 +45,7 @@ export class Role extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: ValidatorErrorCode.DEFAULT_VALIDATION_ERROR,
+        code: AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT,
       },
     ],
   })
@@ -69,7 +66,6 @@ export class Role extends BaseModel {
     defaultValue: () => []
   })
   public rolePermissions: RolePermission[];
-  tableName: DbTables = DbTables.ROLES;
 
   public hasPermission(pass: PermissionPass) {
     for (const rolePermission of this.rolePermissions) {
@@ -86,7 +82,7 @@ export class Role extends BaseModel {
       `
       SELECT 
         rp.*
-      FROM ${DbTables.ROLE_PERMISSIONS} rp
+      FROM ${AuthDbTables.ROLE_PERMISSIONS} rp
       WHERE rp.role_id = @roleId
       ORDER BY rp.role_id;
     `,

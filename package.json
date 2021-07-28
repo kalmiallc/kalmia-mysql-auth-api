@@ -4,7 +4,14 @@
   "description": "MySQL auth package for Kalmia.",
   "main": "dist/index.js",
   "scripts": {
-    "test": "npm run lintFix && jest --detectOpenHandles --forceExit"
+    "build": "rimraf dist && tsc --build tsconfig.json",
+    "prepare": "npm run build",
+    "index": "ts-node src/index.ts",
+    "lint": "eslint -c .eslintrc.js --ext .ts ./src",
+    "lintFix": "eslint --fix -c .eslintrc.js --ext .ts ./src",
+    "test": "npm run lintFix && jest --detectOpenHandles --forceExit",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "repository": {
     "type": "git",
@@ -22,7 +29,7 @@
   "devDependencies": {
     "@types/jest": "^26.0.24",
     "@types/jsonwebtoken": "^8.5.4",
-    "@types/node": "^16.4.3",
+    "@types/node": "^16.4.4",
     "@typescript-eslint/eslint-plugin": "^4.28.5",
     "@typescript-eslint/parser": "^4.28.5",
     "eslint": "^7.31.0",
@@ -39,10 +46,12 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "faker": "^5.5.3",
     "jsonwebtoken": "^8.5.1",
     "kalmia-sql-lib": "git+https://bitbucket.org/kalmiadevs/kalmia-sql-lib.git",
     "mysql2": "^2.2.5",
     "reflect-metadata": "^0.1.13",
+    "rimraf": "^3.0.2",
     "uuid": "^8.3.2"
   },
   "peerDependencies": {
