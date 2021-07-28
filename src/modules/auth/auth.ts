@@ -62,7 +62,7 @@ export class Auth implements IAuth {
           ON ur.user_id = u.id
         LEFT JOIN ${AuthDbTables.ROLES} r
           ON r.id = ur.role_id
-            AND r.status < \`${DbModelStatus.DELETED}\`
+            AND r.status < ${DbModelStatus.DELETED}
         WHERE
           (@id IS NULL OR u.id = @id)
           AND (@role IS NULL OR FIND_IN_SET(ur.role_id, @role))
@@ -72,7 +72,7 @@ export class Auth implements IAuth {
             OR CAST(u.id as CHAR) LIKE CONCAT('%', @search, '%')
           )
           AND (
-            (@status IS NULL AND (u.status < \`${DbModelStatus.DELETED}\` OR @id IS NOT NULL OR @isAdmin = 1))
+            (@status IS NULL AND (u.status < ${DbModelStatus.DELETED} OR @id IS NOT NULL OR @isAdmin = 1))
             OR (@status IS NOT NULL AND FIND_IN_SET(u.status, @status))
           )
         `,

@@ -118,7 +118,7 @@ export class Token extends BaseModel {
         FROM \`${this.tableName}\` t
         WHERE t.token = @token
           AND t.expiresAt > CURRENT_TIMESTAMP
-          AND t.status < \`${DbModelStatus.DELETED}\`
+          AND t.status < ${DbModelStatus.DELETED}
       `;
       const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { token: this.token });
       if (data && data.length) {
@@ -181,7 +181,7 @@ export class Token extends BaseModel {
           FROM \`${this.tableName}\` t
           WHERE t.token = @token
             AND t.expireTime > CURRENT_TIMESTAMP
-            AND t.status < \`${DbModelStatus.DELETED}\`
+            AND t.status < ${DbModelStatus.DELETED}
         `;
         const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { token: this.token });
         if (data && data.length) {

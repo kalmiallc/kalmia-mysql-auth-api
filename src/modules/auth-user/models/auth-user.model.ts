@@ -21,7 +21,7 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [SerializeFor.INSERT_DB],
+    populatable: [PopulateFor.DB],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
     validators: [
       {
@@ -46,7 +46,7 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
+    populatable: [PopulateFor.DB],
     serializable: [SerializeFor.PROFILE],
     defaultValue: DbModelStatus.ACTIVE
   })
@@ -57,7 +57,7 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [SerializeFor.INSERT_DB],
+    populatable: [PopulateFor.DB],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
@@ -78,16 +78,13 @@ export class AuthUser extends BaseModel {
   })
   public username: string;
 
-  /**
-   * User's collection.
-   */
-  collectionName: AuthDbTables = AuthDbTables.USERS;
 
   /**
    * User's email property definition.
    */
   @prop({
     parser: { resolver: stringParser() },
+    populatable: [PopulateFor.DB],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
     setter(v) {
       return v ? v.toLowerCase().replace(' ', '') : v;
@@ -119,7 +116,8 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    serializable: [SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.INSERT_DB, SerializeFor.INSERT_DB],
+    populatable: [PopulateFor.DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -137,6 +135,7 @@ export class AuthUser extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     serializable: [SerializeFor.INSERT_DB],
+    populatable: [PopulateFor.DB],
     validators: [],
     fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
     defaultValue: bcrypt.genSaltSync(10)
@@ -202,7 +201,7 @@ export class AuthUser extends BaseModel {
     email = email.toLowerCase().replace(/\s/g, '');
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
-        SELECT * FROM ${this.collectionName}
+        SELECT * FROM ${this.tableName}
         WHERE email = @email
       `,
       { email }
@@ -301,7 +300,7 @@ export class AuthUser extends BaseModel {
       JOIN ${AuthDbTables.ROLE_PERMISSIONS} rp
       ON rp.role_id = r.id
       WHERE ur.user_id = @userId
-        AND r.status < \`${DbModelStatus.DELETED}\`
+        AND r.status < ${DbModelStatus.DELETED}
       ORDER BY r.id;
     `,
       { userId: this.id },
@@ -312,7 +311,7 @@ export class AuthUser extends BaseModel {
       let role = this.roles.find(x => x.id === r.id);
       if (!role) {
         role = new Role().populate(r, PopulateFor.DB);
-        this.roles.push(role);
+        this.roles = [...this.roles, role];
       }
       let permission = role.rolePermissions.find(x => x.permission_id == r.permission_id);
       if (!permission) {
@@ -337,7 +336,7 @@ export class AuthUser extends BaseModel {
         ON u.id = ur.user_id
       JOIN ${AuthDbTables.ROLES} r
         ON ur.role_id = r.id
-          AND ur.status < \`${DbModelStatus.DELETED}\`
+          AND r.status < ${DbModelStatus.DELETED}
       JOIN ${AuthDbTables.ROLE_PERMISSIONS} rp
         ON ur.role_id = rp.role_id
       WHERE ur.user_id = @userId
@@ -351,7 +350,7 @@ export class AuthUser extends BaseModel {
       let permission = this.permissions.find(x => x.id === p.id);
       if (!permission) {
         permission = new RolePermission({}).populate(p, PopulateFor.DB);
-        this.permissions.push(permission);
+        this.permissions = [...this.permissions, permission];
       }
     }
 

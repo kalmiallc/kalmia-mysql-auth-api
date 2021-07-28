@@ -6,7 +6,6 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
     \`id\` INT NOT NULL AUTO_INCREMENT,
     \`token\` VARCHAR(500) NULL,
     \`status\` INT NOT NULL,
-    \`createTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     \`user_id\` INT NULL,
     \`subject\` VARCHAR(45) NOT NULL,
     \`expiresAt\` DATETIME NULL,

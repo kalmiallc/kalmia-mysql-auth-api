@@ -369,7 +369,7 @@ describe('Auth', () => {
 
     const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
 
-    expect(!!isValid).toBe(true);
+    expect(!!isValid.data).toBe(true);
     expect(isValid).toEqual(
       expect.objectContaining(obj),
     );
@@ -534,7 +534,7 @@ describe('Auth', () => {
     );
     const isValid = await auth.validateToken(newToken.data, AuthJwtTokenType.USER_SIGN_UP);
 
-    expect(!!isValid).toBe(true);
+    expect(!!isValid.data).toBe(true);
     expect(isValid).toEqual(
       expect.objectContaining(
         {
@@ -562,7 +562,7 @@ describe('Auth', () => {
     const auth = new Auth();
     const roleStrOne = faker.lorem.words(3)
     const role1 = await auth.createRole(roleStrOne);
-    expect(role1).toBe(true);
+    expect(role1.data).toBe(true);
 
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`,
@@ -582,10 +582,10 @@ describe('Auth', () => {
     const auth = new Auth();
     const roleStrOne = faker.lorem.words(3)
     const role1 = await auth.createRole(roleStrOne);
-    expect(role1).toBe(true);
+    expect(role1.data).toBe(true);
     const roleStrTwo = faker.lorem.words(3)
     const role2 = await auth.createRole(roleStrTwo);
-    expect(role2).toBe(true);
+    expect(role2.data).toBe(true);
 
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`,
@@ -605,7 +605,7 @@ describe('Auth', () => {
     const auth = new Auth();
     const roleStrOne = faker.lorem.words(3)
     const role1 = await auth.createRole(roleStrOne);
-    expect(role1).toBe(true);
+    expect(role1.data).toBe(true);
     const role2 = await auth.createRole(roleStrOne);
     expect(role2).toBe(false);
 
@@ -628,7 +628,7 @@ describe('Auth', () => {
 
     const success = await auth.createRole('New role');
 
-    expect(success).toBe(true);
+    expect(success.data).toBe(true);
 
     const count = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`,
@@ -651,7 +651,7 @@ describe('Auth', () => {
     const success = await auth.createRole('New role');
     const failure = await auth.createRole('New role');
 
-    expect(success).toBe(true);
+    expect(success.data).toBe(true);
     expect(failure).toBe(false);
 
     const count = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
@@ -705,7 +705,7 @@ describe('Auth', () => {
         write: PermissionLevel.NONE,
         execute: PermissionLevel.NONE,
       }])
-    expect(success).toBe(true);
+    expect(success.data).toBe(true);
 
     const count = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`,
@@ -782,7 +782,7 @@ describe('Auth', () => {
     );
 
     const successRm = await auth.removePermissionsFromRole('MyRole4', [2]);
-    expect(successRm).toBe(true);
+    expect(successRm.data).toBe(true);
     
     const count2 = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`,
@@ -841,7 +841,7 @@ describe('Auth', () => {
       email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
     };
     const user = await auth.createAuthUser(obj);
-    expect(!!user).toBe(true);
+    expect(!!user.data).toBe(true);
     expect(user).toEqual(
       expect.objectContaining(obj)
     );
@@ -873,7 +873,7 @@ describe('Auth', () => {
     (obj as any).id = user.data.id;
     obj.username = 'personsonson';
     const updatedAuthUser = await auth.updateAuthUser(obj);
-    expect(!!updatedAuthUser).toBe(true);
+    expect(!!updatedAuthUser.data).toBe(true);
     expect(user).not.toEqual(
       expect.objectContaining(obj)
     );
@@ -891,7 +891,7 @@ describe('Auth', () => {
     };
     const user = await auth.createAuthUser(obj);
     const success = await auth.deleteAuthUser(user.data.id);
-    expect(success).toBe(true);
+    expect(success.data).toBe(true);
     const noAuthUser = await auth.getAuthUserById(user.data.id);
     expect(noAuthUser.status).toBe(DbModelStatus.DELETED);
   });
@@ -953,7 +953,7 @@ describe('Auth', () => {
 
     expect(token).toEqual(null)
   });
-  it('Query should join permission actions', async () => {
+  it.only('Query should join permission actions', async () => {
     const user = await insertAuthUser();
 
     const roleOne = faker.address.city();
@@ -975,10 +975,12 @@ describe('Auth', () => {
 
     expect(permissions.data.length).toBe(2);
     expect(permissions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ permission_id: 1, read: 2, write: 0, execute: 1 }),
-        expect.objectContaining({ permission_id: 2, read: PermissionLevel.OWN, write: 1, execute: 0 }),
-      ]),
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({ permission_id: 1, read: 2, write: 0, execute: 1 }),
+          expect.objectContaining({ permission_id: 2, read: PermissionLevel.OWN, write: 1, execute: 0 }),
+        ]),
+      })
     );
   })
   it('Check if user can access - OK 1', async () => {
@@ -1015,7 +1017,7 @@ describe('Auth', () => {
       }
     ]);
 
-    expect(canAccess).toBe(true);
+    expect(canAccess.data).toBe(true);
   });
   it('Check if user can access - OK 2', async () => {
     const user = await insertAuthUser();
@@ -1051,7 +1053,7 @@ describe('Auth', () => {
       },
     ]);
 
-    expect(canAccess).toBe(true);
+    expect(canAccess.data).toBe(true);
   });
   it('Check if user can access - OK 3', async () => {
     const user = await insertAuthUser();
@@ -1083,7 +1085,7 @@ describe('Auth', () => {
       },
     ]);
 
-    expect(canAccess).toBe(true);
+    expect(canAccess.data).toBe(true);
   });
   it('Check if user can access - NOK', async () => {
     const user = await insertAuthUser();
@@ -1111,7 +1113,7 @@ describe('Auth', () => {
       },
     ]);
 
-    expect(canAccess).toBe(true);
+    expect(canAccess.data).toBe(true);
   });
 
 });

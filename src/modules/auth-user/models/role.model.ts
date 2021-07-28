@@ -94,7 +94,7 @@ export class Role extends BaseModel {
       let rolePermission = this.rolePermissions.find(x => x.id === rp.id);
       if (!rolePermission) {
         rolePermission = new RolePermission({}).populate(rp, PopulateFor.DB);
-        this.rolePermissions.push(rolePermission);
+        this.rolePermissions = [...this.rolePermissions, rolePermission];
       }
     }
 
