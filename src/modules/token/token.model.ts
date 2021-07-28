@@ -150,7 +150,7 @@ export class Token extends BaseModel {
     const conn = await sqlUtil.start();
     try {
       const updateQuery = `UPDATE \`${this.tableName}\`  t
-        SET t.status = 9
+        SET t.status = ${DbModelStatus.DELETED}
         WHERE t.token = @token`;
       const updateRes = await sqlUtil.paramExecute(
         updateQuery,
@@ -159,6 +159,7 @@ export class Token extends BaseModel {
         },
         conn
       );
+      this.status = DbModelStatus.DELETED;
       await sqlUtil.commit(conn);
       return true;
     } catch (e) {
@@ -177,10 +178,10 @@ export class Token extends BaseModel {
       });
       if (payload) {
         const query = `
-          SELECT t.token, t.user_id, t.status, t.expireTime
+          SELECT t.token, t.user_id, t.status, t.expiresAt
           FROM \`${this.tableName}\` t
           WHERE t.token = @token
-            AND t.expireTime > CURRENT_TIMESTAMP
+            AND t.expiresAt > CURRENT_TIMESTAMP
             AND t.status < ${DbModelStatus.DELETED}
         `;
         const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { token: this.token });

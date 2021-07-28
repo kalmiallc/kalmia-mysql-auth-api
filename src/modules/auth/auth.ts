@@ -15,7 +15,7 @@ import { INewPermission } from './interfaces/new-permission.interface';
 export class Auth implements IAuth {
   private static instance: Auth;
   public static getInstance() {
-    if (this.instance) {
+    if (!this.instance) {
       this.instance = new Auth();
     }
     return this.instance;
@@ -52,9 +52,9 @@ export class Auth implements IAuth {
           u.id, u.username, u.email, u.status, u.PIN,
           GROUP_CONCAT(r.name) as userRoles,
           IF(CHAR_LENGTH(u.passwordHash) > 15, 'true', 'false') hasPW,
-          _createdAt,
-          _updatedAt,
-          _deletedAt
+          u._createdAt,
+          u._updatedAt,
+          u._deletedAt
         `,
       qFrom: `
         FROM ${AuthDbTables.USERS} u
@@ -256,7 +256,7 @@ export class Auth implements IAuth {
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
       };
     }
-    const tokenObj = new Token({ token });
+    const tokenObj = await new Token({}).populateByToken(token);
     const invalidation = await tokenObj.invalidateToken();
     if (invalidation) {
       return {

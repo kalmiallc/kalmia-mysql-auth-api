@@ -13,6 +13,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
   },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://bitbucket.org/kalmiadevs/kalmia-mysql-auth-api.git"
