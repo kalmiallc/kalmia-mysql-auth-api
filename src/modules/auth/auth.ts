@@ -620,6 +620,12 @@ export class Auth implements IAuth {
       };
     }
   }
+
+  /**
+   * Updates existing auth user.
+   * @param data Updated user data. Should contain id for identification.
+   * @returns Updated user.
+   */
   async updateAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>> {
     const user: AuthUser = await new AuthUser().populateById(data.id);
     user.populate(data);
@@ -647,6 +653,12 @@ export class Auth implements IAuth {
       };
     }
   }
+
+  /**
+   * Marks auth user as deleted
+   * @param userId id of auth user to be deleted
+   * @returns updated auth user with deleted status
+   */
   async deleteAuthUser(userId: any): Promise<IAuthResponse<AuthUser>> {
     try {
       const user: AuthUser = await new AuthUser().populateById(userId);
@@ -663,6 +675,13 @@ export class Auth implements IAuth {
       };
     }
   }
+
+  /**
+   * Tells whether a user has requested permissions.
+   * @param userId id of user to check
+   * @param permissions permission to check for
+   * @returns boolean, whether user has all required permissions.
+   */
   async canAccess(userId: any, permissions: PermissionPass[]): Promise<IAuthResponse<boolean>> {
     const user: AuthUser = await new AuthUser().populateById(userId);
     const canAccess = await user.hasPermissions(permissions);
