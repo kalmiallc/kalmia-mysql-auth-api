@@ -13,6 +13,7 @@ import {
   AuthAuthenticationErrorCode,
   AuthJwtTokenType,
 } from './config/types';
+import { IAuthEnv, env } from './config/env';
 
 export {
   Auth,
@@ -28,5 +29,8 @@ export {
   AuthBadRequestErrorCode,
   AuthAuthenticationErrorCode,
   AuthJwtTokenType,
-  PermissionPass
+  PermissionPass,
+
+  IAuthEnv,
+  env
 };

@@ -36,14 +36,14 @@ export interface IAuth {
    *
    * @param userId
    */
-  grantRoles(roles: string[], userId: number): Promise<IAuthResponse<RolePermission[]>>;
+  grantRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>>;
 
   /**
    * Should revoke user's roles if present.
    *
    * @param userId
    */
-  revokeRoles(roles: string[], userId: number): Promise<IAuthResponse<RolePermission[]>>;
+  revokeRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>>;
 
   /**
    * Should get user's roles.

@@ -11,13 +11,12 @@ import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../decorators/permission.decorator';
 
 /**
- * User model.
+ * Auth user model.
  */
 export class AuthUser extends BaseModel {
-
   tableName = AuthDbTables.USERS;
   /**
-   * id
+   * Auth user's id property definition
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -35,14 +34,12 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
       }
     ],
-    fakeValue() {
-      return Math.floor(Math.random() * 10_000);
-    }
+    fakeValue: () => Math.floor(Math.random() * 10_000)
   })
   public id: number;
 
   /**
-   * id
+   * Auth user's status property definition
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -53,7 +50,7 @@ export class AuthUser extends BaseModel {
   public status: number;
 
   /**
-   * id
+   * Auth user's username property definition
    */
   @prop({
     parser: { resolver: stringParser() },
@@ -80,15 +77,13 @@ export class AuthUser extends BaseModel {
 
 
   /**
-   * User's email property definition.
+   * Auth user's email property definition.
    */
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
-    setter(v) {
-      return v ? v.toLowerCase().replace(' ', '') : v;
-    },
+    setter: (v) => v ? v.toLowerCase().replace(' ', '') : v,
     validators: [
       {
         resolver: presenceValidator(),
@@ -105,14 +100,12 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN
       }
     ],
-    fakeValue() {
-      return `${Math.floor(Math.random() * 10_000)}@domain-example.com`;
-    }
+    fakeValue: () => `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
   })
   public email: string;
 
   /**
-   * User's password hash property definition.
+   * Auth user's password hash property definition.
    */
   @prop({
     parser: { resolver: stringParser() },
@@ -130,7 +123,7 @@ export class AuthUser extends BaseModel {
   public passwordHash: string;
 
   /**
-   * User's PIN property definition.
+   * Auth user's PIN property definition.
    */
   @prop({
     parser: { resolver: stringParser() },
@@ -144,7 +137,7 @@ export class AuthUser extends BaseModel {
 
   
   /**
-   * user role
+   * Auth user's role property deifintion.
    */
   @prop({
     parser: { resolver: Role, array: true },
@@ -161,7 +154,7 @@ export class AuthUser extends BaseModel {
 
   
   /**
-   * user role
+   * Auth user's permission property definition
    */
   @prop({
     parser: { resolver: RolePermission, array: true },
@@ -185,12 +178,14 @@ export class AuthUser extends BaseModel {
     return typeof password === 'string' && password.length > 0 && (await bcrypt.compare(password, this.passwordHash));
   }
 
+  /**
+   * Sets user model's password hash. Does not update database entry on its own.
+   * @param password User password
+   */
   public setPassword(password: string) {
     const salt = bcrypt.genSaltSync(10);
     this.passwordHash = bcrypt.hashSync(password, salt);
   }
-
-  
 
   /**
    * Populates model fields by email.
@@ -216,6 +211,11 @@ export class AuthUser extends BaseModel {
     return this;
   }
 
+  /**
+   * Populates model fields by id.
+   *
+   * @param id User's id.
+   */
   public async populateById(id: number): Promise<this> {
     await super.populateById(id);
     if (!this.id) {
@@ -226,21 +226,11 @@ export class AuthUser extends BaseModel {
     return this;
   }
 
-  public async markDeleted(): Promise<boolean> {
-    if (!this.id) {
-      return false;
-    }
-    const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `
-      UPDATE \`${AuthDbTables.USERS}\`
-      SET status = @status
-      WHERE id = @id
-    `,
-      { id: this.id, status: DbModelStatus.DELETED }
-    );
-    return true;
-  }
-
+  /**
+   * Tells whether user has all the provided permissions.
+   * @param permissionPasses Array of permission passed that are required of the user.
+   * @returns boolean, whether user has all the permissions or not
+   */
   public async hasPermissions(permissionPasses: PermissionPass[]): Promise<boolean> {
     for (const pass of permissionPasses) {
       let hasPermission = false;
@@ -257,12 +247,13 @@ export class AuthUser extends BaseModel {
 
     return true;
   }
+
   /**
    * Adds role to the user.
    *
    * @param roleId Role's id.
    */
-  public async addRole(roleId: number, conn?: PoolConnection) {
+  public async addRole(roleId: number, conn?: PoolConnection): Promise<AuthUser> {
     await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
       INSERT IGNORE INTO ${AuthDbTables.USER_ROLES} (user_id, role_id)
@@ -275,7 +266,12 @@ export class AuthUser extends BaseModel {
     return await this.getRoles(conn);
   }
 
-  public async hasRole(roleId: number, conn?: PoolConnection) {
+  /**
+   * Returns true if user has provided role, false otherwise.
+   * @param roleId id of the role in question
+   * @param conn (optional) database connection
+   */
+  public async hasRole(roleId: number, conn?: PoolConnection): Promise<boolean> {
     if (!this.roles || !this.roles.length) {
       await this.getRoles(conn);
     }
@@ -287,7 +283,12 @@ export class AuthUser extends BaseModel {
     return false;
   }
 
-  public async getRoles(conn?: PoolConnection) {
+  /**
+   * Populates user's roles and their role permissions.
+   * @param conn (optional) database connection
+   * @returns the same instance of the object, but with the roles freshly populated.
+   */
+  public async getRoles(conn?: PoolConnection): Promise<AuthUser> {
     this.roles = [];
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
@@ -322,7 +323,13 @@ export class AuthUser extends BaseModel {
 
     return this;
   }
-  public async getPermissions(conn?: PoolConnection) {
+
+  /**
+   * Populates user's permissions with their aggregated role permissions.
+   * @param conn (optional) database connection
+   * @returns same instance of user, but with permissions freshly populated
+   */
+  public async getPermissions(conn?: PoolConnection): Promise<AuthUser> {
     this.permissions = [];
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `

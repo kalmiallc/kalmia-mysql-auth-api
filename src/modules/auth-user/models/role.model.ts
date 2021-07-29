@@ -8,10 +8,14 @@ import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { PermissionPass } from '../decorators/permission.decorator';
 import { RolePermission } from './role-permission.model';
 
+/**
+ * Role model
+ */
 export class Role extends BaseModel {
   tableName: AuthDbTables = AuthDbTables.ROLES;
+
   /**
-   * id
+   * Role's id property definition.
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -28,7 +32,7 @@ export class Role extends BaseModel {
   public id: number;
 
   /**
-   * name
+   * Role's name property definition.
    */
   @prop({
     parser: { resolver: stringParser() },
@@ -52,7 +56,7 @@ export class Role extends BaseModel {
   public name: string;
 
   /**
-   * rolePermissions
+   * Role's rolePermissions property definition.
    */
   @prop({
     parser: { resolver: RolePermission, array: true },
@@ -67,7 +71,12 @@ export class Role extends BaseModel {
   })
   public rolePermissions: RolePermission[];
 
-  public hasPermission(pass: PermissionPass) {
+  /**
+   * Checks whether a role has certain permissions
+   * @param pass PermissionPass to check for. Role must meet or exceed permissions.
+   * @returns boolean, whether role has permission.
+   */
+  public hasPermission(pass: PermissionPass): boolean {
     for (const rolePermission of this.rolePermissions) {
       if (rolePermission.hasPermission(pass)) {
         return true;
@@ -76,7 +85,12 @@ export class Role extends BaseModel {
     return false;
   }
 
-  public async getRolePermissions(conn?: PoolConnection) {
+  /**
+   * Populates role's role permissions.
+   * @param conn (optional) database connection
+   * @returns same instance with freshly populated role permissions
+   */
+  public async getRolePermissions(conn?: PoolConnection): Promise<Role> {
     this.rolePermissions = [];
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
@@ -123,6 +137,11 @@ export class Role extends BaseModel {
     return this;
   }
 
+  /**
+   * Populates model fields by id.
+   *
+   * @param id Role's id.
+   */
   public async populateById(id: any): Promise<any> {
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
       `

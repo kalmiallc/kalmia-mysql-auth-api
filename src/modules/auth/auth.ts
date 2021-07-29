@@ -14,12 +14,24 @@ import { INewPermission } from './interfaces/new-permission.interface';
 
 export class Auth implements IAuth {
   private static instance: Auth;
+
+  /**
+   * Gets instance of the Auth class. Should initialize singleton if it doesn't exist already.
+   * @returns instance of Auth
+   */
   public static getInstance() {
     if (!this.instance) {
       this.instance = new Auth();
     }
     return this.instance;
   }
+
+  /**
+   * Return array of auth users
+   * @param filter Pagination parameters. Can contain limit, offset and orderArr (array of properties to order by)
+   * @param params Parameters to search by (id, search, status, role)
+   * @returns list of auth user data objects.
+   */
   async getAuthUsers(filter: any, params: any): Promise<IAuthResponse<any[]>> {
     const mysqlUtil = new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
     // set default values or null for all params that we pass to sql query
@@ -99,6 +111,12 @@ export class Auth implements IAuth {
       };
     }
   }
+
+  /**
+   * Gets auth user by user id.
+   * @param id if of user to search by
+   * @returns AuthUser with matching id
+   */
   async getAuthUserById(id: number): Promise<IAuthResponse<AuthUser>> {
     
     const user: AuthUser = new AuthUser();
@@ -108,6 +126,12 @@ export class Auth implements IAuth {
       data: user,
     };
   }
+
+  /**
+   * Gets auth user by user email.
+   * @param email if of user to search by
+   * @returns AuthUser with matching email
+   */
   async getAuthUserByEmail(email: string): Promise<IAuthResponse<AuthUser>> {
     
     const user: AuthUser = new AuthUser({});
@@ -117,7 +141,14 @@ export class Auth implements IAuth {
       data: user,
     };
   }
-  async grantRoles(roles: string[], userId: number): Promise<IAuthResponse<RolePermission[]>> {
+
+  /**
+   * Grants roles to user. Roles must exist before being granted.
+   * @param roles Array of role names to add to user.
+   * @param userId Id of the user the roles should be granted to
+   * @returns updated user roles
+   */
+  async grantRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
 
     if (!userId) {
       return {
@@ -149,10 +180,17 @@ export class Auth implements IAuth {
     
     return {
       status: true,
-      data: user.permissions,
+      data: user.roles,
     };
   }
-  async revokeRoles(roles: string[], userId: number): Promise<IAuthResponse<RolePermission[]>> {
+
+  /**
+   * Removes roles from user.
+   * @param roles Array of role names to remove from user.
+   * @param userId Id of the user the roles should be removed from
+   * @returns updated user roles
+   */
+  async revokeRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
 
     if (!userId) {
       
@@ -184,9 +222,15 @@ export class Auth implements IAuth {
     
     return {
       status: true,
-      data: user.permissions,
+      data: user.roles,
     };
   }
+
+  /**
+   * Returns user's roles
+   * @param userId id of user in question
+   * @returns array of user roles
+   */
   async getAuthUserRoles(userId: number): Promise<IAuthResponse<Role[]>> {
     if (!userId) {
       
@@ -209,6 +253,12 @@ export class Auth implements IAuth {
       data: user.roles,
     };
   }
+
+  /**
+   * Returns user's role permissions
+   * @param userId id of user in question
+   * @returns User's role permissions
+   */
   async getAuthUserPermissions(userId: any): Promise<IAuthResponse<RolePermission[]>> {
     if (!userId) {
       
@@ -231,6 +281,15 @@ export class Auth implements IAuth {
       data: user.permissions,
     };
   }
+
+  /**
+   * Generates a JWT with the provided data as payload and subject as subject.
+   * @param data JWT payload
+   * @param subject JWT subject
+   * @param userId (optional) id of the user token is connected to, if it is connected to a user.
+   * @param exp (optional) how long until the newly generated token expires, defaults to '1d'
+   * @returns JWT
+   */
   async generateToken(data: any, subject: string, userId?: number, exp?: any): Promise<IAuthResponse<string>> {
     const tokenObj = new Token({
       payload: data,
@@ -249,6 +308,12 @@ export class Auth implements IAuth {
       errors: [AuthBadRequestErrorCode.DEFAULT_BAD_REQUEST_ERROR] 
     };
   }
+
+  /**
+   * Ivalidates the provided token in the database.
+   * @param token Token to be invalidated
+   * @returns boolean, whether invalidation was successful
+   */
   async invalidateToken(token: string): Promise<IAuthResponse<boolean>> {
     if (!token) {
       return {
@@ -269,6 +334,13 @@ export class Auth implements IAuth {
       errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
     };
   }
+
+  /**
+   * Validates token. If valid, returns token payload.
+   * @param token token to be validated
+   * @param subject JWT subject for token to be validated with
+   * @returns token payload
+   */
   async validateToken(token: string, subject: string): Promise<IAuthResponse<any>> {
     if (!token) {
       return {
@@ -289,6 +361,12 @@ export class Auth implements IAuth {
       data: validation,
     };
   }
+
+  /**
+   * Refreshes provided token if it is valid.
+   * @param token token to be refreshed
+   * @returns new, refreshed token
+   */
   async refreshToken(token: string): Promise<IAuthResponse<string>> {
     if (!token) {
       return {
@@ -309,6 +387,12 @@ export class Auth implements IAuth {
       data: refresh,
     };
   }
+
+  /**
+   * Creates a new role, provided one with the same name doesn't already exist
+   * @param name Name of the new role
+   * @returns Role object of the new role
+   */
   async createRole(name: string): Promise<IAuthResponse<Role>> {
     const role = await new Role({ name });
     try {
@@ -333,6 +417,12 @@ export class Auth implements IAuth {
     };
 
   }
+
+  /**
+   * Deletes a role. Also deletes it from all users and removes all the role's permissions.
+   * @param name Name of the role to delete.
+   * @returns boolean, whether operation was successful
+   */
   async deleteRole(name: string): Promise<IAuthResponse<boolean>> {
     const conn = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).start();
     const mySqlHelper = new MySqlUtil(conn);
@@ -373,6 +463,13 @@ export class Auth implements IAuth {
       data: true
     };
   }
+
+  /**
+   * Adds role permissions to a role. A permission is only granted if role_id and permission_id combination doesn't already exist in database.
+   * @param role name of the role permissions will be granted to.
+   * @param permissions array of permissions to be granted.
+   * @returns updated role permissions of the role
+   */
   async addPermissionsToRole(role: string, permissions: INewPermission[]): Promise<IAuthResponse<RolePermission[]>> {
     try {
       const roleId = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
@@ -409,6 +506,13 @@ export class Auth implements IAuth {
       data: roleObj.rolePermissions,
     };
   }
+
+  /**
+   * Removes role permissions from a role.
+   * @param role Name of the role permissions should be removed from.
+   * @param permissions ids of permissions to be removed from the role.
+   * @returns updated role permissions
+   */
   async removePermissionsFromRole(role: string, permissions: number[]): Promise<IAuthResponse<RolePermission[]>> {
     try {
       const roleId = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
@@ -446,6 +550,12 @@ export class Auth implements IAuth {
       };
     }
   }
+
+  /**
+   * Return role's role permissions
+   * @param role name of the role to get permissions of
+   * @returns role's role permissions
+   */
   async getRolePermissions(role: string): Promise<IAuthResponse<RolePermission[]>> {
     const roleObj = await new Role().populateByName(role);
     return {
@@ -453,8 +563,14 @@ export class Auth implements IAuth {
       data: roleObj.rolePermissions,
     };
   }
+
+  /**
+   * Validates user's login credentials. If accepted, returns authentication JWT.
+   * @param email user's email
+   * @param pwd user's password
+   * @returns Authentication JWT
+   */
   async loginEmail(email: string, pwd: string): Promise<IAuthResponse<string>> {
-    
     const user: AuthUser = await new AuthUser({}).populateByEmail(email);
 
     if (!user.isPersistent()) {
@@ -474,6 +590,12 @@ export class Auth implements IAuth {
       };
     }
   }
+
+  /**
+   * Creates auth user with provided data
+   * @param data auth user data
+   * @returns new auth user
+   */
   async createAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>> {
     const user: AuthUser = new AuthUser(data);
     try {

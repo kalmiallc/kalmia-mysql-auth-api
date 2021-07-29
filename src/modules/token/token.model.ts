@@ -8,10 +8,12 @@ import * as jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
 
-
 export class Token extends BaseModel {
   tableName = AuthDbTables.TOKENS;
 
+  /**
+   * Token's user_id property definition. If token is connected to a specific user, populate this with their id.
+   */
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB],
@@ -20,6 +22,9 @@ export class Token extends BaseModel {
   })
   public user_id: number;
 
+  /**
+   * Token's subject property definition. Populate this with the JWT subject, which is used to discern token purposes.
+   */
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
@@ -27,6 +32,9 @@ export class Token extends BaseModel {
   })
   public subject: string;
 
+  /**
+   * Token's exp property definition. Used for defining token expiration. Defaults to '1d'.
+   */
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.PROFILE],
@@ -34,6 +42,9 @@ export class Token extends BaseModel {
   })
   public exp: string | number;
 
+  /**
+   * Token's expiresAt property definition. This is calculated and saved to the database so it is known when the token will expire. This also enables querying. Do not populate this, use exp.
+   */
   @prop({
     parser: { resolver: dateParser() },
     populatable: [PopulateFor.DB],
@@ -41,6 +52,9 @@ export class Token extends BaseModel {
   })
   public expiresAt: Date;
 
+  /**
+   * Token's token property definition. Populate this if you need to validate, invalidate, or refresh a token. This is also where newly-generated tokens are assigned.
+   */
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
@@ -48,12 +62,20 @@ export class Token extends BaseModel {
   })
   public token: string;
 
+  /**
+   * Token's payload property definition. This is the data that will be stored in the token and will be retrieved from the token. Populate this if you wish to generate a token.
+   */
   @prop({
     populatable: [],
     serializable: [],
   })
   public payload: any;
 
+  /**
+   * Generates a new JWT and saves it to the database.
+   * @param exp (optional) Time until expiration. Defaults to '1d'
+   * @returns JWT
+   */
   public async generate(exp: string | number = '1d'): Promise<string> {
     try {
       if (!exp) {
@@ -104,6 +126,10 @@ export class Token extends BaseModel {
     }
   }
 
+  /**
+   * If token in this.token exists in the database and is valid, returns a token with the same payload and refreshed expiration. Expiration duration is the same as that of the original token.
+   * @returns new token.
+   */
   public async refresh(): Promise<string> {
     try {
       this.payload = jwt.decode(this.token);
@@ -130,6 +156,11 @@ export class Token extends BaseModel {
     return null;
   }
 
+  /**
+   * Populates model fields by token.
+   *
+   * @param token Token's token.
+   */
   public async populateByToken(token: string): Promise<this> {
     const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
       `
@@ -145,6 +176,11 @@ export class Token extends BaseModel {
       return this.reset();
     }
   }
+
+  /**
+   * Marks token as invalid in the database.
+   * @returns boolean, whether the operation was successful or not.
+   */
   public async invalidateToken(): Promise<boolean> {
     const sqlUtil = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
     const conn = await sqlUtil.start();
@@ -168,6 +204,10 @@ export class Token extends BaseModel {
     return false;
   }
 
+  /**
+   * Validates token. If token is valid, returns its payload, otherwise null.
+   * @returns Token payload
+   */
   public async validateToken(): Promise<any> {
     if (!this.token) {
       return null;

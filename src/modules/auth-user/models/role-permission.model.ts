@@ -7,10 +7,14 @@ import { AuthDbTables, PermissionLevel, AuthValidatorErrorCode } from '../../../
 import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../decorators/permission.decorator';
 
+/**
+ * Role permission model
+ */
 export class RolePermission extends BaseModel {
   tableName: AuthDbTables = AuthDbTables.ROLE_PERMISSIONS;
+
   /**
-   * role_id
+   * Role permission's role_id property definition.
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -33,7 +37,7 @@ export class RolePermission extends BaseModel {
   public role_id: number;
 
   /**
-   * permission
+   * Role permission's permission_id property definition.
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -56,7 +60,7 @@ export class RolePermission extends BaseModel {
   public permission_id: number;
 
   /**
-   * read
+   * Role permission's read property definition. Represents level of read access.
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -84,7 +88,7 @@ export class RolePermission extends BaseModel {
   public read: PermissionLevel;
 
   /**
-   * write
+   * Role permission's write property definition. Represents level of write access.
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -110,7 +114,7 @@ export class RolePermission extends BaseModel {
   public write: PermissionLevel;
 
   /**
-   * execute
+   * Role permission's execute property definition. Represents level of execute access.
    */
   @prop({
     parser: { resolver: integerParser() },
@@ -139,16 +143,21 @@ export class RolePermission extends BaseModel {
     super(data);
   }
 
-  public hasPermission(pass: PermissionPass) {
+  /**
+   * Tells whether a role permission meets or exceeds a certain permission requirement.
+   * @param pass PermissionPass permission requirement.
+   * @returns boolean, whether role permission has required permission
+   */
+  public hasPermission(pass: PermissionPass): boolean {
     return pass.permission === this.permission_id &&
       this[pass.type] &&
       (!pass.level || pass.level <= this[pass.type]);
   }
 
-  // public: boolean {
-  //   return !!this.role_id && !!this.permission_id;
-  // }
-
+  /**
+   * Checks whether a certain role permission exists in the db.
+   * @returns Promise<boolean>
+   */
   public async existsInDb(): Promise<boolean> {
     const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as mysql.Pool).paramQuery(
       `
