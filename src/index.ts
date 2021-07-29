@@ -14,6 +14,9 @@ import {
   AuthJwtTokenType,
 } from './config/types';
 import { IAuthEnv, env } from './config/env';
+import { INewPermission } from './modules/auth/interfaces/new-permission.interface';
+import { IAuthResponse } from './modules/auth/interfaces/auth-response.interface';
+import { IAuthUser } from './modules/auth-user/interfaces/auth-user.interface';
 
 export {
   Auth,
@@ -21,6 +24,9 @@ export {
   Token,
   RolePermission,
   Role,
+  INewPermission,
+  IAuthResponse,
+  IAuthUser,
 
   AuthDbTables,
   PermissionType,
