@@ -55,7 +55,7 @@ export class AuthUser extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
+    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
