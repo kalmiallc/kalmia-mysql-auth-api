@@ -149,6 +149,7 @@ export class AuthUser extends BaseModel {
       SerializeFor.PROFILE
     ],
     validators: [],
+    defaultValue: []
   })
   public roles: Role[];
 
@@ -166,6 +167,7 @@ export class AuthUser extends BaseModel {
       SerializeFor.PROFILE
     ],
     validators: [],
+    defaultValue: [],
   })
   public permissions: RolePermission[];
 
