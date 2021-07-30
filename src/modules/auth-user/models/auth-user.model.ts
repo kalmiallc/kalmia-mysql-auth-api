@@ -118,7 +118,6 @@ export class AuthUser extends BaseModel {
       }
     ],
     fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
-    defaultValue: bcrypt.genSaltSync(10)
   })
   public passwordHash: string;
 
@@ -131,7 +130,6 @@ export class AuthUser extends BaseModel {
     populatable: [PopulateFor.DB],
     validators: [],
     fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
-    defaultValue: bcrypt.genSaltSync(10)
   })
   public PIN: string;
 
@@ -149,7 +147,7 @@ export class AuthUser extends BaseModel {
       SerializeFor.PROFILE
     ],
     validators: [],
-    defaultValue: []
+    defaultValue: () => []
   })
   public roles: Role[];
 
@@ -167,7 +165,7 @@ export class AuthUser extends BaseModel {
       SerializeFor.PROFILE
     ],
     validators: [],
-    defaultValue: [],
+    defaultValue: () => [],
   })
   public permissions: RolePermission[];
 
