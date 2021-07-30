@@ -598,6 +598,9 @@ export class Auth implements IAuth {
    */
   async createAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>> {
     const user: AuthUser = new AuthUser(data);
+    if ((data as any).password) {
+      user.setPassword((data as any).password);
+    }
     try {
       await user.validate();
     } catch (err) {
@@ -605,9 +608,6 @@ export class Auth implements IAuth {
     }
 
     if (user.isValid()) {
-      if ((data as any).password) {
-        user.setPassword((data as any).password);
-      }
       await user.create();
       return {
         status: true,
