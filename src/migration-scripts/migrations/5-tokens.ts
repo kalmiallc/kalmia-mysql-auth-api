@@ -5,7 +5,7 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
   CREATE TABLE IF NOT EXISTS \`${AuthDbTables.TOKENS}\` (
     \`id\` INT NOT NULL AUTO_INCREMENT,
     \`token\` VARCHAR(500) NULL,
-    \`status\` INT NOT NULL,
+    \`status\` INT NOT NULL DEFAULT 5,
     \`user_id\` INT NULL,
     \`subject\` VARCHAR(45) NOT NULL,
     \`expiresAt\` DATETIME NULL,
