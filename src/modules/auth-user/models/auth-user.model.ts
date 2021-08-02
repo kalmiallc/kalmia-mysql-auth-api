@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { integerParser, stringParser } from '@rawmodel/parsers';
+import { isPresent } from '@rawmodel/utils';
 import { emailValidator, presenceValidator } from '@rawmodel/validators';
 import * as bcrypt from 'bcryptjs';
 import { PoolConnection, Pool } from 'mysql2/promise';
@@ -9,6 +10,19 @@ import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, Ser
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../decorators/permission.decorator';
+
+/**
+ * Conditional presence validator based on ID property.
+ */
+const passwordHashPresenceValidator = () => async function(this: AuthUser, value: any) {
+  const context = this.getContext();
+
+  if (this.id) {
+    return isPresent(value);
+  }
+  return true;
+};
+
 
 /**
  * Auth user model.
@@ -109,11 +123,11 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    serializable: [SerializeFor.INSERT_DB, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.INSERT_DB],
     populatable: [PopulateFor.DB],
     validators: [
       {
-        resolver: presenceValidator(),
+        resolver: passwordHashPresenceValidator(),
         code: AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT
       }
     ],
