@@ -9,9 +9,8 @@
     "index": "ts-node src/index.ts",
     "lint": "eslint -c .eslintrc.js --ext .ts ./src",
     "lintFix": "eslint --fix -c .eslintrc.js --ext .ts ./src",
-    "test": "npm run lintFix && jest --detectOpenHandles --forceExit",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test": "cross-env NODE_ENV=testing npm run lintFix && npx jest --config jest.config.ts --detectOpenHandles --runInBand --forceExit",
+    "coverage": "cross-env NODE_ENV=testing npm run lint && npx jest --config jest.config.ts --detectOpenHandles --runInBand  --collectCoverage"
   },
   "files": [
     "dist/**/*",
@@ -31,6 +30,7 @@
   "license": "UNLICENSED",
   "homepage": "https://bitbucket.org/kalmiadevs/kalmia-mysql-auth-api#readme",
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.2",
     "@types/jest": "^26.0.24",
     "@types/jsonwebtoken": "^8.5.4",
     "@types/node": "^16.4.4",

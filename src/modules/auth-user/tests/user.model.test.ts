@@ -5,7 +5,7 @@ import { connectToDb, cleanDatabase, closeConnectionToDb } from '../../test-help
 import { insertAuthUser } from '../../test-helpers/test-user';
 
 describe('User - MySQL', () => {
-  let databaseState;
+  let databaseState: MySqlUtil;
 
   beforeAll(async () => {
     databaseState = new MySqlUtil(await connectToDb() as Pool);

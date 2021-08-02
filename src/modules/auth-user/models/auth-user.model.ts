@@ -14,9 +14,7 @@ import { PermissionPass } from '../decorators/permission.decorator';
 /**
  * Conditional presence validator based on ID property.
  */
-const passwordHashPresenceValidator = () => async function(this: AuthUser, value: any) {
-  const context = this.getContext();
-
+const passwordHashConditionalPresenceValidator = () => async function(this: AuthUser, value: any) {
   if (this.id) {
     return isPresent(value);
   }
@@ -86,6 +84,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
       }
     ],
+    fakeValue: () => `User${Math.floor(Math.random() * 10_000)}`,
   })
   public username: string;
 
@@ -127,7 +126,7 @@ export class AuthUser extends BaseModel {
     populatable: [PopulateFor.DB],
     validators: [
       {
-        resolver: passwordHashPresenceValidator(),
+        resolver: passwordHashConditionalPresenceValidator(),
         code: AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT
       }
     ],
@@ -196,7 +195,7 @@ export class AuthUser extends BaseModel {
    * Sets user model's password hash. Does not update database entry on its own.
    * @param password User password
    */
-  public setPassword(password: string) {
+  public setPassword(password: string): void {
     const salt = bcrypt.genSaltSync(10);
     this.passwordHash = bcrypt.hashSync(password, salt);
   }
