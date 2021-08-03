@@ -919,9 +919,12 @@ describe('Auth', () => {
       id: faker.datatype.number(10_000_000),
       username: faker.internet.userName(),
       email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password(),
     };
     const user = await auth.createAuthUser(obj);
-    expect(!!user.data).toBe(true);
+    delete obj.password;
+
+    expect(user.status).toBe(true);
     expect(user.data).toEqual(
       expect.objectContaining(obj)
     );
@@ -933,34 +936,68 @@ describe('Auth', () => {
     const obj: any = {
       id: faker.datatype.number(10_000_000),
       username: faker.internet.userName(),
+      password: faker.internet.password(),
     };
-    const res = await auth.createAuthUser(obj);
-    expect(res.status).toBe(false);
-    expect(res.errors).toEqual(
-      expect.arrayContaining([AuthValidatorErrorCode.USER_EMAIL_NOT_PRESENT])
+    const user = await auth.createAuthUser(obj);
+    delete obj.password;
+
+    expect(user.status).toBe(true);    
+    expect(user.data).toEqual(
+      expect.objectContaining(obj)
+    );
+  });
+
+  it('Create user - missing username', async () => {
+    const auth = Auth.getInstance();
+
+    const obj: any = {
+      id: faker.datatype.number(10_000_000),
+      email: faker.internet.email(),
+      password: faker.internet.password(),
+    };
+    const user = await auth.createAuthUser(obj);
+    delete obj.password;
+
+    expect(user.status).toBe(false);
+    expect(user.errors).toEqual(
+      expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT])
     )
   });
 
-  it('Update user', async () => {
+  it('Create user - bad username', async () => {
     const auth = Auth.getInstance();
 
     const obj = {
       id: faker.datatype.number(10_000_000),
-      username: 'personson',
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      username: faker.internet.email(),
+      email: faker.internet.email(),
+      password: faker.internet.password(),
     };
     const user = await auth.createAuthUser(obj);
-    (obj as any).id = user.data.id;
-    obj.username = 'personsonson';
-    const updatedAuthUser = await auth.updateAuthUser(obj);
-    expect(!!updatedAuthUser.data).toBe(true);
-    expect(user.data).not.toEqual(
-      expect.objectContaining(obj)
-    );
-    expect(updatedAuthUser.data).toEqual(
-      expect.objectContaining(obj)
-    );
+    delete obj.password;
+
+    expect(user.status).toBe(false);
+    expect(user.errors).toEqual(
+      expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_NOT_VALID])
+    )
   });
+
+  it('Create user - missing password', async () => {
+    const auth = Auth.getInstance();
+
+    const obj: any = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+    };
+    const res = await auth.createAuthUser(obj);
+
+    expect(res.status).toBe(false);
+    expect(res.errors).toEqual(
+      expect.arrayContaining([AuthValidatorErrorCode.USER_PASSWORD_OR_PIN_NOT_PRESENT])
+    )
+  });
+
   it('Delete user', async () => {
     const auth = Auth.getInstance();
 
@@ -968,13 +1005,17 @@ describe('Auth', () => {
       id: faker.datatype.number(10_000_000),
       username: faker.internet.userName(),
       email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password(),
     };
     const user = await auth.createAuthUser(obj);
     const success = await auth.deleteAuthUser(user.data.id);
+    delete obj.password;
+
     expect(success.data).toEqual(
       expect.objectContaining(obj)
     );
     expect(success.data.status).toBe(DbModelStatus.DELETED);
+
     const noAuthUser = await auth.getAuthUserById(user.data.id);
     expect(noAuthUser.data.status).toBe(DbModelStatus.DELETED);
   });

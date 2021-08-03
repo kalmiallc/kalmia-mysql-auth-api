@@ -97,7 +97,6 @@ export interface IAuth {
 
   loginEmail(email: string, pwd: string): Promise<IAuthResponse<string>>;
   createAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>>;
-  updateAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>>;
   deleteAuthUser(userId: any): Promise<IAuthResponse<AuthUser>>;
   canAccess(userId: any, permissions: PermissionPass[]): Promise<IAuthResponse<boolean>>;
 }

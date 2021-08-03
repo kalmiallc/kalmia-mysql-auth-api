@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { isPresent } from '@rawmodel/utils';
-import { emailValidator, presenceValidator } from '@rawmodel/validators';
+import { emailValidator, presenceValidator, stringLengthValidator } from '@rawmodel/validators';
 import * as bcrypt from 'bcryptjs';
 import { PoolConnection, Pool } from 'mysql2/promise';
 import { Role } from './role.model';
@@ -14,12 +14,23 @@ import { PermissionPass } from '../decorators/permission.decorator';
 /**
  * Conditional presence validator based on ID property.
  */
-const passwordHashConditionalPresenceValidator = () => async function(this: AuthUser, value: any) {
+const passwordHashConditionalPresenceValidator = (fieldNames: string[]) => async function(this: AuthUser, value: any) {
   if (this.id) {
-    return isPresent(value);
+    let fieldIsPresent = false;
+    for (const fieldName of fieldNames) {
+      if (isPresent(this[fieldName])) {
+        fieldIsPresent = true;
+        break;
+      }
+    }
+    return fieldIsPresent;
   }
   return true;
 };
+
+function getRandomDigit() {
+  return Math.floor(Math.random() * 10);
+}
 
 
 /**
@@ -42,7 +53,7 @@ export class AuthUser extends BaseModel {
     ],
     handlers: [
       {
-        resolver: uniqueFieldValue('user', 'id'),
+        resolver: uniqueFieldValue(AuthDbTables.USERS, 'id'),
         code: AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
       }
     ],
@@ -80,7 +91,7 @@ export class AuthUser extends BaseModel {
     ],
     handlers: [
       {
-        resolver: uniqueFieldValue('user', 'username'),
+        resolver: uniqueFieldValue(AuthDbTables.USERS, 'username'),
         code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
       }
     ],
@@ -99,17 +110,13 @@ export class AuthUser extends BaseModel {
     setter: (v) => v ? v.toLowerCase().replace(' ', '') : v,
     validators: [
       {
-        resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.USER_EMAIL_NOT_PRESENT
-      },
-      {
         resolver: emailValidator(),
         code: AuthValidatorErrorCode.USER_EMAIL_NOT_VALID
       }
     ],
     handlers: [
       {
-        resolver: uniqueFieldValue('user', 'email'),
+        resolver: uniqueFieldValue(AuthDbTables.USERS, 'email'),
         code: AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN
       }
     ],
@@ -126,8 +133,12 @@ export class AuthUser extends BaseModel {
     populatable: [PopulateFor.DB],
     validators: [
       {
-        resolver: passwordHashConditionalPresenceValidator(),
-        code: AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT
+        resolver: passwordHashConditionalPresenceValidator(['passwordHash', 'PIN']),
+        code: AuthValidatorErrorCode.USER_PASSWORD_OR_PIN_NOT_PRESENT
+      },
+      {
+        resolver: uniqueFieldValue(AuthDbTables.USERS, 'PIN'),
+        code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
       }
     ],
     fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
@@ -141,8 +152,13 @@ export class AuthUser extends BaseModel {
     parser: { resolver: stringParser() },
     serializable: [SerializeFor.INSERT_DB],
     populatable: [PopulateFor.DB],
-    validators: [],
-    fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
+    validators: [
+      {
+        resolver: stringLengthValidator({ minOrEqual: 4, maxOrEqual: 4}),
+        code: AuthValidatorErrorCode.USER_PIN_NOT_CORRECT_LENGTH
+      }
+    ],
+    fakeValue: `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`,
   })
   public PIN: string;
 

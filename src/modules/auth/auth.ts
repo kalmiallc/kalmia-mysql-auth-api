@@ -622,39 +622,6 @@ export class Auth implements IAuth {
   }
 
   /**
-   * Updates existing auth user.
-   * @param data Updated user data. Should contain id for identification.
-   * @returns Updated user.
-   */
-  async updateAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>> {
-    const user: AuthUser = await new AuthUser().populateById(data.id);
-    user.populate(data);
-
-    try {
-      await user.validate();
-    } catch (err) {
-      await user.handle(err);
-    }
-
-    if (user.isValid()) {
-      if ((data as any).password) {
-        user.setPassword((data as any).password);
-      }
-      await user.update();
-      
-      return {
-        status: true,
-        data: user
-      };
-    } else {
-      return {
-        status: false,
-        errors: user.collectErrors().map(x => x.code)
-      };
-    }
-  }
-
-  /**
    * Marks auth user as deleted
    * @param userId id of auth user to be deleted
    * @returns updated auth user with deleted status
