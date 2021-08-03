@@ -14,12 +14,13 @@ import { PermissionPass } from '../decorators/permission.decorator';
 /**
  * Conditional presence validator based on ID property.
  */
-const passwordHashConditionalPresenceValidator = () => async function(this: AuthUser, value: any) {
-  if (this.id) {
-    return isPresent(value);
-  }
-  return true;
-};
+const passwordHashConditionalPresenceValidator = () => 
+  async function(this: AuthUser, value: any) {
+    if (this.id) {
+      return isPresent(value);
+    }
+    return true;
+  };
 
 
 /**
@@ -130,7 +131,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT
       }
     ],
-    fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
+    fakeValue: () => bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
   })
   public passwordHash: string;
 
@@ -148,7 +149,7 @@ export class AuthUser extends BaseModel {
 
   
   /**
-   * Auth user's role property deifintion.
+   * Auth user's role property definition.
    */
   @prop({
     parser: { resolver: Role, array: true },
