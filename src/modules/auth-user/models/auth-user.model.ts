@@ -141,7 +141,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
       }
     ],
-    fakeValue: bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
+    fakeValue: () => bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
   })
   public passwordHash: string;
 
@@ -164,7 +164,7 @@ export class AuthUser extends BaseModel {
 
   
   /**
-   * Auth user's role property deifintion.
+   * Auth user's role property definition.
    */
   @prop({
     parser: { resolver: Role, array: true },

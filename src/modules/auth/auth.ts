@@ -574,7 +574,6 @@ export class Auth implements IAuth {
     const user: AuthUser = await new AuthUser({}).populateByEmail(email);
 
     if (!user.isPersistent()) {
-      // throw new UnauthenticatedError(AuthenticationErrorCode.USER_NOT_AUTHENTICATED, 'auth-mysql/loginEmail');
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
@@ -601,6 +600,7 @@ export class Auth implements IAuth {
     if ((data as any).password) {
       user.setPassword((data as any).password);
     }
+
     try {
       await user.validate();
     } catch (err) {
