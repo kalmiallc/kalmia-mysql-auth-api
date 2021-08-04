@@ -50,8 +50,6 @@ export class AuthUser extends BaseModel {
         resolver: presenceValidator(),
         code: AuthValidatorErrorCode.USER_ID_NOT_PRESENT
       },
-    ],
-    handlers: [
       {
         resolver: uniqueFieldValue(AuthDbTables.USERS, 'id'),
         code: AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
@@ -87,9 +85,7 @@ export class AuthUser extends BaseModel {
       {
         resolver: (v?: any) => !emailValidator()(v),
         code: AuthValidatorErrorCode.USER_USERNAME_NOT_VALID
-      }
-    ],
-    handlers: [
+      },
       {
         resolver: uniqueFieldValue(AuthDbTables.USERS, 'username'),
         code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
@@ -112,9 +108,7 @@ export class AuthUser extends BaseModel {
       {
         resolver: emailValidator(),
         code: AuthValidatorErrorCode.USER_EMAIL_NOT_VALID
-      }
-    ],
-    handlers: [
+      },
       {
         resolver: uniqueFieldValue(AuthDbTables.USERS, 'email'),
         code: AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN

@@ -930,6 +930,46 @@ describe('Auth', () => {
     );
   });
 
+  it('Create user - with PIN', async () => {
+    const auth = Auth.getInstance();
+
+    const obj = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      PIN: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
+    };
+    const user = await auth.createAuthUser(obj);
+    delete obj.PIN;
+
+    expect(user.status).toBe(true);
+    expect(user.data).toEqual(
+      expect.objectContaining(obj)
+    );
+  });
+
+  it('Create two users with same PIN - should fail', async () => {
+    const auth = Auth.getInstance();
+
+    const obj = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      PIN: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
+    };
+    const user = await auth.createAuthUser(obj);
+
+    expect(user.status).toBe(true);
+    expect(user.data).toEqual(
+      expect.objectContaining(obj)
+    );
+
+    obj.id = faker.datatype.number(10_000_000);
+    const user1 = await auth.createAuthUser(obj);
+    expect(user1.status).toBe(false);
+    delete obj.PIN;
+  });
+
   it('Create user - missing email', async () => {
     const auth = Auth.getInstance();
 
