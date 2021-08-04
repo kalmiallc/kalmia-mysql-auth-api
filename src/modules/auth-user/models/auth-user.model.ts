@@ -130,10 +130,6 @@ export class AuthUser extends BaseModel {
         resolver: passwordHashConditionalPresenceValidator(['passwordHash', 'PIN']),
         code: AuthValidatorErrorCode.USER_PASSWORD_OR_PIN_NOT_PRESENT
       },
-      {
-        resolver: uniqueFieldValue(AuthDbTables.USERS, 'PIN'),
-        code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
-      }
     ],
     fakeValue: () => bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
   })
@@ -150,6 +146,10 @@ export class AuthUser extends BaseModel {
       {
         resolver: stringLengthValidator({ minOrEqual: 4, maxOrEqual: 4}),
         code: AuthValidatorErrorCode.USER_PIN_NOT_CORRECT_LENGTH
+      },
+      {
+        resolver: uniqueFieldValue(AuthDbTables.USERS, 'PIN'),
+        code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
       }
     ],
     fakeValue: `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`,
