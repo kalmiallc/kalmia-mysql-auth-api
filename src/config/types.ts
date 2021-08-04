@@ -68,4 +68,3 @@ export enum AuthJwtTokenType {
   USER_AUTHENTICATION = 'USER_AUTHENTICATION',
   USER_SIGN_UP = 'USER_SIGN_UP',
 }
-

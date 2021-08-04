@@ -261,7 +261,6 @@ export class Auth implements IAuth {
    */
   async getAuthUserPermissions(userId: any): Promise<IAuthResponse<RolePermission[]>> {
     if (!userId) {
-      
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
@@ -269,13 +268,13 @@ export class Auth implements IAuth {
     }
 
     const user: AuthUser = await new AuthUser().populateById(userId);
-    
-    if (!user.id) {
+    if (!user.isPersistent()) {
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
+
     return {
       status: true,
       data: user.permissions,
@@ -296,6 +295,7 @@ export class Auth implements IAuth {
       subject,
       user_id: userId
     });
+
     const token = await tokenObj.generate(exp);
     if (token) {
       return {
@@ -303,6 +303,7 @@ export class Auth implements IAuth {
         data: token,
       };
     }
+
     return {
       status: false,
       errors: [AuthBadRequestErrorCode.DEFAULT_BAD_REQUEST_ERROR] 
@@ -310,7 +311,7 @@ export class Auth implements IAuth {
   }
 
   /**
-   * Ivalidates the provided token in the database.
+   * Invalidates the provided token in the database.
    * @param token Token to be invalidated
    * @returns boolean, whether invalidation was successful
    */
@@ -321,6 +322,7 @@ export class Auth implements IAuth {
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
       };
     }
+
     const tokenObj = await new Token({}).populateByToken(token);
     const invalidation = await tokenObj.invalidateToken();
     if (invalidation) {
@@ -329,6 +331,7 @@ export class Auth implements IAuth {
         data: invalidation,
       };
     }
+
     return {
       status: false,
       errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
@@ -348,6 +351,7 @@ export class Auth implements IAuth {
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
       };
     }
+
     const tokenObj = new Token({ token, subject });
     const validation = await tokenObj.validateToken();
     if (!validation) {
@@ -356,6 +360,7 @@ export class Auth implements IAuth {
         errors: [AuthAuthenticationErrorCode.INVALID_AUTHENTICATION_TOKEN]
       };
     }
+
     return {
       status: true,
       data: validation,
@@ -374,6 +379,7 @@ export class Auth implements IAuth {
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
       };
     }
+
     const tokenObj = new Token({ token });
     const refresh = await tokenObj.refresh();
     if (!refresh) {
@@ -382,6 +388,7 @@ export class Auth implements IAuth {
         errors: [AuthAuthenticationErrorCode.INVALID_AUTHENTICATION_TOKEN]
       };
     }
+
     return {
       status: true,
       data: refresh,
@@ -403,6 +410,7 @@ export class Auth implements IAuth {
         errors: [AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT]
       };
     }
+
     try {
       await role.create();
       return {
@@ -411,11 +419,11 @@ export class Auth implements IAuth {
       };
     } catch (e) {
     }
+
     return {
       status: false,
       errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
     };
-
   }
 
   /**
@@ -658,6 +666,7 @@ export class Auth implements IAuth {
     }
 
     if (user.isValid()) {
+
       await user.create();
       return {
         status: true,
@@ -707,6 +716,39 @@ export class Auth implements IAuth {
       status: true,
       data: canAccess
     };
+  }
+
+  async changePassword(userId: any, password: string, newPassword: string) {
+    let successful = true;
+
+    if (!userId || !password || !newPassword) {
+      return {
+        status: false,
+        errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
+      };
+    }
+
+    const user = await new AuthUser().populateById(userId);
+    if (!user.isPersistent()) {
+      successful = false;
+    }
+
+    if (await user.comparePassword(password)) {
+      user.setPassword(newPassword);
+    }
+
+
+    if (successful) {
+      return {
+        status: true,
+        data: user
+      };
+    } else {
+      return {
+        status: false,
+        errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+      };
+    }
   }
 
 }

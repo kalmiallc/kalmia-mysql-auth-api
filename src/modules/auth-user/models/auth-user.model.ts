@@ -37,7 +37,11 @@ function getRandomDigit() {
  * Auth user model.
  */
 export class AuthUser extends BaseModel {
+  /**
+   * Auth user table.
+   */
   tableName = AuthDbTables.USERS;
+
   /**
    * Auth user's id property definition
    */
@@ -75,7 +79,7 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [PopulateFor.DB],
+    populatable: [PopulateFor.DB, PopulateFor.PROFILE],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
     validators: [
       {
@@ -101,7 +105,7 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [PopulateFor.DB],
+    populatable: [PopulateFor.DB, PopulateFor.PROFILE],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
     setter: (v) => v ? v.toLowerCase().replace(' ', '') : v,
     validators: [
@@ -158,17 +162,12 @@ export class AuthUser extends BaseModel {
 
   
   /**
-   * Auth user's role property definition.
+   * Auth user's roles property definition.
    */
   @prop({
     parser: { resolver: Role, array: true },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.PROFILE
-    ],
-    serializable: [
-      SerializeFor.PROFILE
-    ],
+    populatable: [PopulateFor.DB],
+    serializable: [SerializeFor.PROFILE],
     validators: [],
     defaultValue: () => []
   })
@@ -176,17 +175,12 @@ export class AuthUser extends BaseModel {
 
   
   /**
-   * Auth user's permission property definition
+   * Auth user's permissions property definition
    */
   @prop({
     parser: { resolver: RolePermission, array: true },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.PROFILE
-    ],
-    serializable: [
-      SerializeFor.PROFILE
-    ],
+    populatable: [PopulateFor.DB],
+    serializable: [SerializeFor.PROFILE],
     validators: [],
     defaultValue: () => [],
   })
@@ -216,7 +210,7 @@ export class AuthUser extends BaseModel {
    *
    * @param email User's email.
    */
-  public async populateByEmail(email: string) {
+  public async populateByEmail(email: string, populateRoles: boolean = false) {
     email = email.toLowerCase().replace(/\s/g, '');
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
@@ -231,8 +225,11 @@ export class AuthUser extends BaseModel {
     }
 
     this.populate(res[0]);
-    await this.getRoles();
-    await this.getPermissions();
+    if (populateRoles) {
+      await this.getRoles();
+      await this.getPermissions();
+    }
+
     return this;
   }
 
@@ -241,7 +238,7 @@ export class AuthUser extends BaseModel {
    *
    * @param username User's username.
    */
-  public async populateByUsername(username: string) {
+  public async populateByUsername(username: string, populateRoles: boolean = false) {
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
           SELECT * FROM ${this.tableName}
@@ -255,8 +252,11 @@ export class AuthUser extends BaseModel {
     }
 
     this.populate(res[0]);
-    await this.getRoles();
-    await this.getPermissions();
+    if (populateRoles) {
+      await this.getRoles();
+      await this.getPermissions();
+    }
+
     return this;
   }
 
@@ -265,7 +265,7 @@ export class AuthUser extends BaseModel {
    *
    * @param pin User's PIN number.
    */
-  public async populateByPin(pin: string) {
+  public async populateByPin(pin: string, populateRoles: boolean = false) {
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
             SELECT * FROM ${this.tableName}
@@ -279,8 +279,11 @@ export class AuthUser extends BaseModel {
     }
   
     this.populate(res[0]);
-    await this.getRoles();
-    await this.getPermissions();
+    if (populateRoles) {
+      await this.getRoles();
+      await this.getPermissions();
+    }
+
     return this;
   }
   
@@ -290,13 +293,17 @@ export class AuthUser extends BaseModel {
    *
    * @param id User's id.
    */
-  public async populateById(id: number): Promise<this> {
+  public async populateById(id: number, populateRoles: boolean = false): Promise<this> {
     await super.populateById(id);
     if (!this.id) {
       return this.reset();
     }
-    await this.getRoles();
-    await this.getPermissions();
+
+    if (populateRoles) {
+      await this.getRoles();
+      await this.getPermissions();
+    }
+
     return this;
   }
 
@@ -306,6 +313,10 @@ export class AuthUser extends BaseModel {
    * @returns boolean, whether user has all the permissions or not
    */
   public async hasPermissions(permissionPasses: PermissionPass[]): Promise<boolean> {
+    if (!this.permissions || !this.permissions.length) {
+      await this.getPermissions();
+    }
+
     for (const pass of permissionPasses) {
       let hasPermission = false;
       for (const perm of this.permissions) {
@@ -349,6 +360,7 @@ export class AuthUser extends BaseModel {
     if (!this.roles || !this.roles.length) {
       await this.getRoles(conn);
     }
+
     for (const r of this.roles) {
       if (r.id === roleId) {
         return true;
