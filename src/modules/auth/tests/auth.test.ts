@@ -1019,6 +1019,7 @@ describe('Auth', () => {
     const noAuthUser = await auth.getAuthUserById(user.data.id);
     expect(noAuthUser.data.status).toBe(DbModelStatus.DELETED);
   });
+
   it('Login - OK', async () => {
     const auth = Auth.getInstance();
 
@@ -1051,6 +1052,7 @@ describe('Auth', () => {
       })
     )
   });
+
   it('Login - Bad password', async () => {
     const auth = Auth.getInstance();
 
@@ -1080,6 +1082,7 @@ describe('Auth', () => {
       expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED])
     )
   });
+
   it('Query should join permission actions', async () => {
     const user = await insertAuthUser();
 
@@ -1182,6 +1185,7 @@ describe('Auth', () => {
 
     expect(canAccess.data).toBe(true);
   });
+
   it('Check if user can access - OK 3', async () => {
     const user = await insertAuthUser();
 
@@ -1214,6 +1218,7 @@ describe('Auth', () => {
 
     expect(canAccess.data).toBe(true);
   });
+
   it('Check if user can access - NOK', async () => {
     const user = await insertAuthUser();
 
@@ -1244,8 +1249,6 @@ describe('Auth', () => {
   });
 
 });
-
-
 
 async function createRoleWithPermissions(role: string, permissions: INewPermission[]) {
   let roleId = await insertRoleWithPermissions(role, permissions);

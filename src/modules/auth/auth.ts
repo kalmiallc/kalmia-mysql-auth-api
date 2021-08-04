@@ -523,21 +523,25 @@ export class Auth implements IAuth {
       `,
         { role }
       );
+
       if (!roleId.length) {
         return {
           status: false,
           errors: [AuthValidatorErrorCode.ROLE_ID_NOT_PRESENT]
         };
       }
+
       const query = `
           DELETE rp
           FROM ${AuthDbTables.ROLE_PERMISSIONS} rp
           WHERE rp.role_id = @roleId AND
             rp.permission_id IN (${permissions.join(', ')})
         `;
+
       const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, {
         roleId: roleId[0].id
       });
+
       const roleObj = await new Role().populateByName(role);
       return {
         status: true,
@@ -566,11 +570,11 @@ export class Auth implements IAuth {
 
   /**
    * Validates user's login credentials. If accepted, returns authentication JWT.
-   * @param email user's email
-   * @param pwd user's password
+   * @param email User's email
+   * @param password User's password
    * @returns Authentication JWT
    */
-  async loginEmail(email: string, pwd: string): Promise<IAuthResponse<string>> {
+  async loginEmail(email: string, password: string): Promise<IAuthResponse<string>> {
     const user: AuthUser = await new AuthUser({}).populateByEmail(email);
 
     if (!user.isPersistent()) {
@@ -580,7 +584,7 @@ export class Auth implements IAuth {
       };
     }
 
-    if (await user.comparePassword(pwd)) {
+    if (await user.comparePassword(password)) {
       return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
     } else {
       return {
@@ -589,6 +593,52 @@ export class Auth implements IAuth {
       };
     }
   }
+
+  /**
+   * Validates user's login credentials. If accepted, returns authentication JWT.
+   * @param username User's username
+   * @param password User's password
+   * @returns Authentication JWT
+   */
+  async loginUsername(username: string, password: string): Promise<IAuthResponse<string>> {
+    const user: AuthUser = await new AuthUser({}).populateByUsername(username);
+
+    if (!user.isPersistent()) {
+      return {
+        status: false,
+        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+      };
+    }
+
+    if (await user.comparePassword(password)) {
+      return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+    } else {
+      return {
+        status: false,
+        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+      };
+    }
+  }
+
+  /**
+   * Validates user's login credentials. If accepted, returns authentication JWT.
+   * @param pin User's PIN number.
+   * @returns Authentication JWT
+   */
+  async loginPin(pin: string): Promise<IAuthResponse<string>> {
+    const user: AuthUser = await new AuthUser({}).populateByPin(pin);
+  
+    if (!user.isPersistent()) {
+      return {
+        status: false,
+        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+      };
+    }
+  
+    return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+  }
+
+
 
   /**
    * Creates auth user with provided data
@@ -613,6 +663,7 @@ export class Auth implements IAuth {
         status: true,
         data: user
       };
+
     } else {
       return {
         status: false,

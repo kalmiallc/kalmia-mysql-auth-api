@@ -95,7 +95,10 @@ export interface IAuth {
   removePermissionsFromRole(role: string, permissions: number[]): Promise<IAuthResponse<RolePermission[]>>;
   getRolePermissions(role: string): Promise<IAuthResponse<RolePermission[]>>;
 
-  loginEmail(email: string, pwd: string): Promise<IAuthResponse<string>>;
+  loginEmail(email: string, password: string): Promise<IAuthResponse<string>>;
+  loginUsername(username: string, password: string): Promise<IAuthResponse<string>>;
+  loginPin(pin: string): Promise<IAuthResponse<string>>;
+  
   createAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>>;
   deleteAuthUser(userId: any): Promise<IAuthResponse<AuthUser>>;
   canAccess(userId: any, permissions: PermissionPass[]): Promise<IAuthResponse<boolean>>;

@@ -209,6 +209,7 @@ export class AuthUser extends BaseModel {
 
   /**
    * Sets user model's password hash. Does not update database entry on its own.
+   * 
    * @param password User password
    */
   public setPassword(password: string): void {
@@ -234,11 +235,61 @@ export class AuthUser extends BaseModel {
     if (!res.length) {
       return this.reset();
     }
+
     this.populate(res[0]);
     await this.getRoles();
     await this.getPermissions();
     return this;
   }
+
+  /**
+   * Populates model fields by username.
+   *
+   * @param username User's username.
+   */
+  public async populateByUsername(username: string) {
+    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+      `
+          SELECT * FROM ${this.tableName}
+          WHERE username = @username
+        `,
+      { username }
+    );
+  
+    if (!res.length) {
+      return this.reset();
+    }
+
+    this.populate(res[0]);
+    await this.getRoles();
+    await this.getPermissions();
+    return this;
+  }
+
+  /**
+   * Populates model fields by PIN number.
+   *
+   * @param pin User's PIN number.
+   */
+  public async populateByPin(pin: string) {
+    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+      `
+            SELECT * FROM ${this.tableName}
+            WHERE PIN = @pin
+          `,
+      { pin }
+    );
+    
+    if (!res.length) {
+      return this.reset();
+    }
+  
+    this.populate(res[0]);
+    await this.getRoles();
+    await this.getPermissions();
+    return this;
+  }
+  
 
   /**
    * Populates model fields by id.
