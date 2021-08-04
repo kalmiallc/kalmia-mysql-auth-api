@@ -2,7 +2,7 @@ import { DbModelStatus, MySqlConnManager, MySqlUtil, selectAndCountQuery } from 
 import { Pool } from 'mysql2/promise';
 import { AuthUser } from '../..';
 import { env } from '../../config/env';
-import { AuthAuthenticationErrorCode, AuthDbTables, AuthBadRequestErrorCode, AuthValidatorErrorCode, AuthJwtTokenType } from '../../config/types';
+import { AuthAuthenticationErrorCode, AuthDbTables, AuthBadRequestErrorCode, AuthValidatorErrorCode, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode } from '../../config/types';
 import { PermissionPass } from '../auth-user/decorators/permission.decorator';
 import { IAuthUser } from '../auth-user/interfaces/auth-user.interface';
 import { RolePermission } from '../auth-user/models/role-permission.model';
@@ -106,7 +106,7 @@ export class Auth implements IAuth {
       };
     } catch (e) {
       return {
-        errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR],
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
         status: false,
       };
     }
@@ -334,7 +334,7 @@ export class Auth implements IAuth {
 
     return {
       status: false,
-      errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+      errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
     };
   }
 
@@ -422,7 +422,7 @@ export class Auth implements IAuth {
 
     return {
       status: false,
-      errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+      errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
     };
   }
 
@@ -463,7 +463,7 @@ export class Auth implements IAuth {
       await new MySqlUtil(conn).rollback(conn);
       return {
         status: false,
-        errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
       };
     }
     return {
@@ -505,7 +505,7 @@ export class Auth implements IAuth {
     } catch (e) {
       return {
         status: false,
-        errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
       };
     }
     const roleObj = await new Role().populateByName(role);
@@ -558,7 +558,7 @@ export class Auth implements IAuth {
     } catch (e) {
       return {
         status: false,
-        errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
       };
     }
   }
@@ -666,13 +666,19 @@ export class Auth implements IAuth {
     }
 
     if (user.isValid()) {
+      try {
+        await user.create();
+      } catch (error) {
+        return {
+          status: false,
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+        };
+      }
 
-      await user.create();
       return {
         status: true,
         data: user
       };
-
     } else {
       return {
         status: false,
@@ -688,7 +694,7 @@ export class Auth implements IAuth {
    */
   async deleteAuthUser(userId: any): Promise<IAuthResponse<AuthUser>> {
     try {
-      const user: AuthUser = await new AuthUser().populateById(userId);
+      const user = await new AuthUser().populateById(userId);
       await user.delete();
       
       return {
@@ -698,7 +704,7 @@ export class Auth implements IAuth {
     } catch (e) {
       return {
         status: false,
-        errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
       };
     }
   }
@@ -718,9 +724,14 @@ export class Auth implements IAuth {
     };
   }
 
+  /**
+   * Changes user's password.
+   * @param userId User's ID
+   * @param password User's current password.
+   * @param newPassword User's new password.
+   * @returns 
+   */
   async changePassword(userId: any, password: string, newPassword: string) {
-    let successful = true;
-
     if (!userId || !password || !newPassword) {
       return {
         status: false,
@@ -728,25 +739,149 @@ export class Auth implements IAuth {
       };
     }
 
-    const user = await new AuthUser().populateById(userId);
-    if (!user.isPersistent()) {
-      successful = false;
-    }
-
-    if (await user.comparePassword(password)) {
-      user.setPassword(newPassword);
-    }
-
-
-    if (successful) {
+    const authUser = await new AuthUser().populateById(userId);
+    if (!authUser.isPersistent()) {
       return {
-        status: true,
-        data: user
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
+    }
+
+    if (await authUser.comparePassword(password)) {
+      authUser.setPassword(newPassword);
+      try {
+        await authUser.validate();
+      } catch (error) {
+        await authUser.handle(error);
+      }
+
+      if (!authUser.isValid()) {
+        return {
+          status: false,
+          errors: authUser.collectErrors().map(x => x.code)
+        };
+      } else {
+        try {
+          await authUser.updateNonUpdatableFields(['passwordHash']);
+        } catch (error) {
+          return {
+            status: false,
+            errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+          };
+        }
+
+        return {
+          status: true,
+          data: authUser
+        };
+      }
+
     } else {
       return {
         status: false,
-        errors: [AuthBadRequestErrorCode.DEFAULT_SQL_ERROR]
+        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+      };
+    }
+  }
+
+  /**
+   * Updates user's email.
+   * @param userId User's ID.
+   * @param email User's new email.
+   * @returns 
+   */
+  async changeEmail(userId: any, email: string) {
+    if (!userId || !email) {
+      return {
+        status: false,
+        errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
+      };
+    }
+
+    const authUser = await new AuthUser().populateById(userId);
+    if (!authUser.isPersistent()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+      };
+    }
+
+    authUser.populate({ email });
+    try {
+      await authUser.validate();
+    } catch (error) {
+      await authUser.handle(error);
+    }
+
+    if (!authUser.isValid()) {
+      return {
+        status: false,
+        errors: authUser.collectErrors().map(x => x.code)
+      };
+    } else {
+      try {
+        await authUser.updateNonUpdatableFields(['email']);
+      } catch (error) {
+        return {
+          status: false,
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+        };
+      }
+
+      return {
+        status: true,
+        data: authUser
+      };
+    }
+  }
+
+  /**
+   * Updates user's username.
+   * @param userId User's ID.
+   * @param username User's new username.
+   * @returns 
+   */
+  async changeUsername(userId: any, username: string) {
+    if (!userId || !username) {
+      return {
+        status: false,
+        errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
+      };
+    }
+
+    const authUser = await new AuthUser().populateById(userId);
+    if (!authUser.isPersistent()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+      };
+    }
+
+    authUser.populate({ username });
+    try {
+      await authUser.validate();
+    } catch (error) {
+      await authUser.handle(error);
+    }
+
+    if (!authUser.isValid()) {
+      return {
+        status: false,
+        errors: authUser.collectErrors().map(x => x.code)
+      };
+    } else {
+      try {
+        await authUser.updateNonUpdatableFields(['username']);
+      } catch (error) {
+        return {
+          status: false,
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+        };
+      }
+
+      return {
+        status: true,
+        data: authUser
       };
     }
   }

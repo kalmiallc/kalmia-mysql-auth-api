@@ -160,7 +160,6 @@ export class AuthUser extends BaseModel {
   })
   public PIN: string;
 
-  
   /**
    * Auth user's roles property definition.
    */
@@ -446,6 +445,39 @@ export class AuthUser extends BaseModel {
         this.permissions = [...this.permissions, permission];
       }
     }
+
+    return this;
+  }
+
+  /**
+   * Updates fields that are not updatable with the update method.
+   * @param updateFields List of fields to update
+   * @returns AuthUser (this)
+   */
+  public async updateNonUpdatableFields(updateFields: string[]): Promise<this> {
+    const filtered = new Set(updateFields);
+    filtered.delete('id');
+
+    const updatable = {};
+    for (const field of filtered) {
+      if (this[field]) {
+        updatable[field] = this[field];
+      }
+    }
+
+    const res = new MySqlUtil(await MySqlConnManager.getInstance().getConnection()).paramQuery(`
+      UPDATE \`${this.tableName}\`
+      SET
+        ${Object.keys(filtered)
+    .map((x) => `\`${x}\` = @${x}`)
+    .join(',\n')}
+      WHERE id = @id
+      `,
+    {
+      ...filtered,
+      id: this.id,
+    }
+    );
 
     return this;
   }

@@ -50,10 +50,25 @@ export enum AuthValidatorErrorCode {
  */
 export enum AuthBadRequestErrorCode {
   DEFAULT_BAD_REQUEST_ERROR = 400000,
-  DEFAULT_SQL_ERROR = 400001,
-  MISSING_DATA_ERROR = 400002,
+  MISSING_DATA_ERROR = 400001,
 }
 
+/**
+ * System error codes - 500000.
+ */
+export enum AuthSystemErrorCode {
+  DEFAULT_SYSTEM_ERROR = 500000,
+  UNHANDLED_SYSTEM_ERROR = 500001,
+  SQL_SYSTEM_ERROR = 500002
+}
+
+/**
+ * Resource not found error codes - 404000.
+ */
+export enum AuthResourceNotFoundErrorCode {
+  DEFAULT_RESOURCE_NOT_FOUND_ERROR = 404000,
+  AUTH_USER_DOES_NOT_EXISTS = 404001
+}
 
 /**
  * Authentication error codes - 401000.

@@ -3,7 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
 import { env } from '../../../config/env';
-import { AuthAuthenticationErrorCode, AuthBadRequestErrorCode, AuthDbTables, AuthJwtTokenType, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
+import { AuthAuthenticationErrorCode, AuthBadRequestErrorCode, AuthDbTables, AuthJwtTokenType, AuthSystemErrorCode, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
 import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
@@ -649,7 +649,7 @@ describe('Auth', () => {
     expect(role2.status).toBe(false);
     expect(role2.errors).toEqual(
       expect.arrayContaining([
-        AuthBadRequestErrorCode.DEFAULT_SQL_ERROR
+        AuthSystemErrorCode.SQL_SYSTEM_ERROR
       ])
     )
 
@@ -708,7 +708,7 @@ describe('Auth', () => {
     );
     expect(failure.status).toBe(false);
     expect(failure.errors).toEqual(
-      expect.arrayContaining([AuthBadRequestErrorCode.DEFAULT_SQL_ERROR])
+      expect.arrayContaining([AuthSystemErrorCode.SQL_SYSTEM_ERROR])
     )
 
     const count = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
