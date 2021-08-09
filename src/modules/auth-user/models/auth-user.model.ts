@@ -481,4 +481,59 @@ export class AuthUser extends BaseModel {
 
     return this;
   }
+
+  /**
+   * Saves model data in the database as a new document.
+   */
+  public async create(options: { conn?: PoolConnection } = {}): Promise<this> {
+    const serializedModel = this.serialize(SerializeFor.INSERT_DB);
+
+    // remove non-creatable parameters
+    delete serializedModel._createdAt;
+    delete serializedModel._deletedAt;
+    delete serializedModel._updatedAt;
+
+    let isSingleTrans = false;
+    let mySqlHelper: MySqlUtil;
+    if (!options.conn) {
+      isSingleTrans = true;
+      const pool = (await MySqlConnManager.getInstance().getConnection()) as PoolConnection;
+      mySqlHelper = new MySqlUtil(pool);
+    }
+    if (isSingleTrans) {
+      options.conn = await mySqlHelper.start();
+      mySqlHelper = new MySqlUtil(options.conn);
+    }
+    try {
+      const createQuery = `
+      INSERT INTO \`${this.tableName}\`
+      ( ${Object.keys(serializedModel)
+    .map((x) => `\`${x}\``)
+    .join(', ')} )
+      VALUES (
+        ${Object.keys(serializedModel)
+    .map((key) => `@${key}`)
+    .join(', ')}
+      )`;
+
+      await mySqlHelper.paramExecute(createQuery, serializedModel, options.conn);
+      if (!this.id) {
+        const req = await mySqlHelper.paramExecute('SELECT last_insert_id() AS id;', null, options.conn);
+        this.id = req[0].id;
+      }
+
+      if (isSingleTrans) {
+        this._createdAt = new Date();
+        this._updatedAt = this._createdAt;
+        await mySqlHelper.commit(options.conn);
+      }
+    } catch (err) {
+      if (isSingleTrans) {
+        await mySqlHelper.rollback(options.conn);
+      }
+      throw new Error(err);
+    }
+
+    return this;
+  }
 }
