@@ -729,10 +729,11 @@ export class Auth implements IAuth {
    * @param userId User's ID
    * @param password User's current password.
    * @param newPassword User's new password.
+   * @param force 
    * @returns 
    */
-  async changePassword(userId: any, password: string, newPassword: string) {
-    if (!userId || !password || !newPassword) {
+  async changePassword(userId: any, password: string, newPassword: string, force: boolean = false) {
+    if (!userId || !newPassword) {
       return {
         status: false,
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
@@ -747,7 +748,7 @@ export class Auth implements IAuth {
       };
     }
 
-    if (await authUser.comparePassword(password)) {
+    if (force || await authUser.comparePassword(password)) {
       authUser.setPassword(newPassword);
       try {
         await authUser.validate();
