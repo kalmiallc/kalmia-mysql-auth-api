@@ -114,17 +114,23 @@ export class Auth implements IAuth {
 
   /**
    * Gets auth user by user id.
-   * @param id if of user to search by
+   * @param userId if of user to search by
    * @returns AuthUser with matching id
    */
-  async getAuthUserById(id: number): Promise<IAuthResponse<AuthUser>> {
-    
-    const user: AuthUser = new AuthUser();
-    await user.populateById(id);
-    return {
-      status: true,
-      data: user,
-    };
+  async getAuthUserById(userId: number): Promise<IAuthResponse<AuthUser>> {
+    const user = await new AuthUser().populateById(userId);
+
+    if (user.isPersistent()) {
+      return {
+        status: true,
+        data: user,
+      };
+    } else {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+      };
+    }    
   }
 
   /**
@@ -133,13 +139,19 @@ export class Auth implements IAuth {
    * @returns AuthUser with matching email
    */
   async getAuthUserByEmail(email: string): Promise<IAuthResponse<AuthUser>> {
-    
-    const user: AuthUser = new AuthUser({});
-    await user.populateByEmail(email);
-    return {
-      status: true,
-      data: user,
-    };
+    const user = await new AuthUser().populateByEmail(email);
+
+    if (user.isPersistent()) {
+      return {
+        status: true,
+        data: user,
+      };
+    } else {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+      };
+    }    
   }
 
   /**
@@ -149,21 +161,21 @@ export class Auth implements IAuth {
    * @returns updated user roles
    */
   async grantRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
-
     if (!userId) {
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
-    const user: AuthUser = await new AuthUser().populateById(userId);
-    
+
+    const user = await new AuthUser().populateById(userId);
     if (!user.id) {
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
+
     const queryGet = `
       SELECT id
       FROM ${AuthDbTables.ROLES}
@@ -191,23 +203,21 @@ export class Auth implements IAuth {
    * @returns updated user roles
    */
   async revokeRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
-
     if (!userId) {
-      
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
 
-    const user: AuthUser = await new AuthUser().populateById(userId);
-    
+    const user = await new AuthUser().populateById(userId);
     if (!user.id) {
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
+
     const query = `
       DELETE ur
       FROM ${AuthDbTables.USER_ROLES} ur
@@ -216,8 +226,7 @@ export class Auth implements IAuth {
       WHERE r.name IN (${roles.map((role) => `"${role}"`).join(', ')})
         AND ur.user_id = @userId
     `;
-    const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { userId });
-
+    await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { userId });
     await user.getRoles();
     
     return {
@@ -233,21 +242,20 @@ export class Auth implements IAuth {
    */
   async getAuthUserRoles(userId: number): Promise<IAuthResponse<Role[]>> {
     if (!userId) {
-      
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
 
-    const user: AuthUser = await new AuthUser().populateById(userId);
-    
+    const user = await new AuthUser().populateById(userId);
     if (!user.id) {
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
+
     return {
       status: true,
       data: user.roles,
@@ -267,7 +275,7 @@ export class Auth implements IAuth {
       };
     }
 
-    const user: AuthUser = await new AuthUser().populateById(userId);
+    const user = await new AuthUser().populateById(userId);
     if (!user.isPersistent()) {
       return {
         status: false,
@@ -355,6 +363,7 @@ export class Auth implements IAuth {
 
     const tokenObj = new Token({ token, subject });
     const validation = await tokenObj.validateToken(userId);
+
     if (!validation) {
       return {
         status: false,
@@ -670,6 +679,7 @@ export class Auth implements IAuth {
       try {
         await user.create();
       } catch (error) {
+        console.log(JSON.stringify(error), null, 2);
         return {
           status: false,
           errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]

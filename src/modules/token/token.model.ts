@@ -233,7 +233,7 @@ export class Token extends BaseModel {
           WHERE t.token = @token
             AND t.expiresAt > CURRENT_TIMESTAMP
             AND t.status < ${DbModelStatus.DELETED}
-            (@userId IS NULL OR t.user_id = @userId)
+            AND (@userId IS NULL OR t.user_id = @userId)
         `;
 
         const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, {

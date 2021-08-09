@@ -4,7 +4,7 @@ import { AuthDbTables } from '../../../config/types';
 import { connectToDb, cleanDatabase, closeConnectionToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 
-describe('User - MySQL', () => {
+describe('Auth user model tests', () => {
   let databaseState: MySqlUtil;
 
   beforeAll(async () => {
@@ -31,6 +31,4 @@ describe('User - MySQL', () => {
       ]),
     );
   });
-
-
 });

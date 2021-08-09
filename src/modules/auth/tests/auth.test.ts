@@ -357,7 +357,8 @@ describe('Auth', () => {
       email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
     };
 
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
+    console.log(token);
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
@@ -456,9 +457,7 @@ describe('Auth', () => {
     );
 
     const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
-
     expect(!!isValid.data).toBe(false);
-
   });
 
   it('Validate JWT token - 4 (FALSE)', async () => {
@@ -473,10 +472,9 @@ describe('Auth', () => {
       subject: AuthJwtTokenType.USER_SIGN_UP,
       expiresIn: '1d',
     })
+
     const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
-
     expect(!!isValid.data).toBe(false);
-
   });
 
   it('Validate JWT token - 5 (FALSE)', async () => {
@@ -502,7 +500,6 @@ describe('Auth', () => {
       ]),
     );
 
-
     const expired = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `UPDATE ${AuthDbTables.TOKENS}
       SET expiresAt = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
@@ -511,18 +508,112 @@ describe('Auth', () => {
     );
 
     const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
-
     expect(!!isValid.data).toBe(false);
-
   });
 
   it('Validate JWT token - 6 (FALSE)', async () => {
     const auth = Auth.getInstance();
-
     const isValid = await auth.validateToken('badtoken', AuthJwtTokenType.USER_SIGN_UP);
-
     expect(!!isValid.data).toBe(false);
+  });
 
+  it('Validate JWT token - 7 (TRUE)', async () => {
+    const user = await insertAuthUser();
+    const auth = Auth.getInstance();
+    const obj = {
+      name: 'person',
+      value: 42069,
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+    };
+
+    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+    console.log(token);
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 1,
+        }),
+      ]),
+    );
+
+    const tokenEntry = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT * FROM ${AuthDbTables.TOKENS};`,
+    );
+    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
+
+    expect(isValid.status).toBe(true);
+    expect(isValid.data).toEqual(
+      expect.objectContaining(obj)
+    );
+  });
+
+  it('Validate JWT token - 8 (FALSE)', async () => {
+    const user = await insertAuthUser();
+    const auth = Auth.getInstance();
+    const obj = {
+      name: 'person',
+      value: 42069,
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+    };
+
+    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
+    console.log(token);
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 1,
+        }),
+      ]),
+    );
+
+    const tokenEntry = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT * FROM ${AuthDbTables.TOKENS};`,
+    );
+    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
+
+    expect(isValid.status).toBe(false);
+  });
+
+  it('Validate JWT token - 9 (FALSE)', async () => {
+    const user = await insertAuthUser();
+    const auth = Auth.getInstance();
+    const obj = {
+      name: 'person',
+      value: 42069,
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+    };
+
+    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+    console.log(token);
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 1,
+        }),
+      ]),
+    );
+
+    const tokenEntry = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT * FROM ${AuthDbTables.TOKENS};`,
+    );
+    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id + 1);
+
+    expect(isValid.status).toBe(false);
   });
 
   // TODO/FIXME: should refreshing a token invalidate the old one?
@@ -1038,7 +1129,7 @@ describe('Auth', () => {
     )
   });
 
-  it('Delete user', async () => {
+  it.only('Delete user', async () => {
     const auth = Auth.getInstance();
 
     const obj = {
@@ -1048,6 +1139,7 @@ describe('Auth', () => {
       password: faker.internet.password(),
     };
     const user = await auth.createAuthUser(obj);
+    console.log(JSON.stringify(user, null, 2));
     const success = await auth.deleteAuthUser(user.data.id);
     delete obj.password;
 
@@ -1189,6 +1281,7 @@ describe('Auth', () => {
 
     expect(canAccess.data).toBe(true);
   });
+
   it('Check if user can access - OK 2', async () => {
     const user = await insertAuthUser();
 
