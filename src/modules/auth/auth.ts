@@ -345,7 +345,7 @@ export class Auth implements IAuth {
    * @param userId User's ID - if present the ownership of the token will also be validated.
    * @returns token payload
    */
-  async validateToken(token: string, subject: string, userId: string = null): Promise<IAuthResponse<any>> {
+  async validateToken(token: string, subject: string, userId: any = null): Promise<IAuthResponse<any>> {
     if (!token) {
       return {
         status: false,
