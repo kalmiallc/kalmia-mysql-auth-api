@@ -184,17 +184,20 @@ export class Token extends BaseModel {
   public async invalidateToken(): Promise<boolean> {
     const sqlUtil = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
     const conn = await sqlUtil.start();
+
     try {
       const updateQuery = `UPDATE \`${this.tableName}\`  t
         SET t.status = ${DbModelStatus.DELETED}
         WHERE t.token = @token`;
-      const updateRes = await sqlUtil.paramExecute(
+
+      await sqlUtil.paramExecute(
         updateQuery,
         {
           token: this.token
         },
         conn
       );
+
       this.status = DbModelStatus.DELETED;
       await sqlUtil.commit(conn);
       return true;
@@ -206,16 +209,23 @@ export class Token extends BaseModel {
 
   /**
    * Validates token. If token is valid, returns its payload, otherwise null.
+   * @param userId User's ID - if present the ownership of the token will also be validated.
    * @returns Token payload
    */
-  public async validateToken(): Promise<any> {
+  public async validateToken(userId?: string): Promise<any> {
     if (!this.token) {
       return null;
     }
+
     try {
-      const payload = jwt.verify(this.token, env.APP_SECRET, {
-        subject: this.subject,
-      });
+      const payload = jwt.verify(
+        this.token,
+        env.APP_SECRET,
+        {
+          subject: this.subject,
+        }
+      );
+
       if (payload) {
         const query = `
           SELECT t.token, t.user_id, t.status, t.expiresAt
@@ -223,8 +233,14 @@ export class Token extends BaseModel {
           WHERE t.token = @token
             AND t.expiresAt > CURRENT_TIMESTAMP
             AND t.status < ${DbModelStatus.DELETED}
+            (@userId IS NULL OR t.user_id = @userId)
         `;
-        const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { token: this.token });
+
+        const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, {
+          token: this.token,
+          userId
+        });
+
         if (data && data.length) {
           return payload;
         }

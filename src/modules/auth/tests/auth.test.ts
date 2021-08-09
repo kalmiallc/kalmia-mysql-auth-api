@@ -418,7 +418,7 @@ describe('Auth', () => {
     expect(validation.status).toBe(false);
     expect(validation.errors).toEqual(
       expect.arrayContaining([
-        AuthAuthenticationErrorCode.INVALID_AUTHENTICATION_TOKEN
+        AuthAuthenticationErrorCode.INVALID_TOKEN
       ])
     );
 
@@ -572,7 +572,7 @@ describe('Auth', () => {
     expect(newToken.status).toBe(false);
     expect(newToken.errors).toEqual(
       expect.arrayContaining([
-        AuthAuthenticationErrorCode.INVALID_AUTHENTICATION_TOKEN
+        AuthAuthenticationErrorCode.INVALID_TOKEN
       ])
     );
   });

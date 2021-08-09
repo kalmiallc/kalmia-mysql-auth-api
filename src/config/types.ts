@@ -75,7 +75,7 @@ export enum AuthResourceNotFoundErrorCode {
  */
 export enum AuthAuthenticationErrorCode {
   MISSING_AUTHENTICATION_TOKEN = 401001,
-  INVALID_AUTHENTICATION_TOKEN = 401002,
+  INVALID_TOKEN = 401002,
   USER_NOT_AUTHENTICATED = 401003
 }
 

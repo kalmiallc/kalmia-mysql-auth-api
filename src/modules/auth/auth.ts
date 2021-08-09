@@ -271,7 +271,7 @@ export class Auth implements IAuth {
     if (!user.isPersistent()) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
     }
 
@@ -342,9 +342,10 @@ export class Auth implements IAuth {
    * Validates token. If valid, returns token payload.
    * @param token token to be validated
    * @param subject JWT subject for token to be validated with
+   * @param userId User's ID - if present the ownership of the token will also be validated.
    * @returns token payload
    */
-  async validateToken(token: string, subject: string): Promise<IAuthResponse<any>> {
+  async validateToken(token: string, subject: string, userId: string = null): Promise<IAuthResponse<any>> {
     if (!token) {
       return {
         status: false,
@@ -353,11 +354,11 @@ export class Auth implements IAuth {
     }
 
     const tokenObj = new Token({ token, subject });
-    const validation = await tokenObj.validateToken();
+    const validation = await tokenObj.validateToken(userId);
     if (!validation) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.INVALID_AUTHENTICATION_TOKEN]
+        errors: [AuthAuthenticationErrorCode.INVALID_TOKEN]
       };
     }
 
@@ -385,7 +386,7 @@ export class Auth implements IAuth {
     if (!refresh) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.INVALID_AUTHENTICATION_TOKEN]
+        errors: [AuthAuthenticationErrorCode.INVALID_TOKEN]
       };
     }
 
@@ -588,7 +589,7 @@ export class Auth implements IAuth {
     if (!user.isPersistent()) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
     }
 
@@ -614,7 +615,7 @@ export class Auth implements IAuth {
     if (!user.isPersistent()) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
     }
 
