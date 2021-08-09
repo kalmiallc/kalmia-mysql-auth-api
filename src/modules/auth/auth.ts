@@ -256,6 +256,7 @@ export class Auth implements IAuth {
       };
     }
 
+    await user.getRoles();
     return {
       status: true,
       data: user.roles,
@@ -283,6 +284,7 @@ export class Auth implements IAuth {
       };
     }
 
+    await user.getPermissions();
     return {
       status: true,
       data: user.permissions,
@@ -679,7 +681,6 @@ export class Auth implements IAuth {
       try {
         await user.create();
       } catch (error) {
-        console.log(JSON.stringify(error), null, 2);
         return {
           status: false,
           errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]

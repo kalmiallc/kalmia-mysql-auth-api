@@ -3,7 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
 import { env } from '../../../config/env';
-import { AuthAuthenticationErrorCode, AuthBadRequestErrorCode, AuthDbTables, AuthJwtTokenType, AuthSystemErrorCode, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
+import { AuthAuthenticationErrorCode, AuthBadRequestErrorCode, AuthDbTables, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
 import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
@@ -48,10 +48,13 @@ describe('Auth', () => {
     expect(user.email).toBe(userRes?.data?.email);
   });
 
-  it('Try finding non-existing user by ID and return empty user', async () => {
+  it('Try finding non-existing user by ID and return error', async () => {
     const auth = Auth.getInstance();
     const userRes = await auth.getAuthUserById(123);
-    expect(userRes?.data?.id).toBe(null);
+    expect(userRes.status).toEqual(false)
+    expect(userRes.errors).toEqual(
+      expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS])
+    )
   });
 
   it('Create user and get by email', async () => {
@@ -65,7 +68,10 @@ describe('Auth', () => {
   it('Try finding non-existing user by email and return empty user', async () => {
     const auth = Auth.getInstance();
     const userRes = await auth.getAuthUserByEmail('non.existent@example.com');
-    expect(userRes?.data?.id).toBe(null);
+    expect(userRes.status).toEqual(false)
+    expect(userRes.errors).toEqual(
+      expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS])
+    )
   });
 
   it('[HELPER] Query should create and find 1 role with 2 permissions', async () => {
@@ -358,7 +364,6 @@ describe('Auth', () => {
     };
 
     const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-    console.log(token);
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
@@ -527,7 +532,6 @@ describe('Auth', () => {
     };
 
     const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    console.log(token);
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
@@ -562,7 +566,6 @@ describe('Auth', () => {
     };
 
     const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-    console.log(token);
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
@@ -594,7 +597,6 @@ describe('Auth', () => {
     };
 
     const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    console.log(token);
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
@@ -1129,7 +1131,7 @@ describe('Auth', () => {
     )
   });
 
-  it.only('Delete user', async () => {
+  it('Delete user', async () => {
     const auth = Auth.getInstance();
 
     const obj = {
@@ -1139,7 +1141,6 @@ describe('Auth', () => {
       password: faker.internet.password(),
     };
     const user = await auth.createAuthUser(obj);
-    console.log(JSON.stringify(user, null, 2));
     const success = await auth.deleteAuthUser(user.data.id);
     delete obj.password;
 
@@ -1149,7 +1150,10 @@ describe('Auth', () => {
     expect(success.data.status).toBe(DbModelStatus.DELETED);
 
     const noAuthUser = await auth.getAuthUserById(user.data.id);
-    expect(noAuthUser.data.status).toBe(DbModelStatus.DELETED);
+    expect(noAuthUser.status).toEqual(false)
+    expect(noAuthUser.errors).toEqual(
+      expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS])
+    )
   });
 
   it('Login - OK', async () => {
