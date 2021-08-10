@@ -885,6 +885,7 @@ describe('Auth', () => {
     );
 
   });
+
   it('Try adding permissions to nonexistent role (should fail)', async () => {
     const auth = Auth.getInstance();
 
@@ -903,7 +904,7 @@ describe('Auth', () => {
     expect(failure.status).toBe(false);
     expect(failure.errors).toEqual(
       expect.arrayContaining([
-        AuthValidatorErrorCode.ROLE_ID_NOT_PRESENT
+        AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS
       ])
     );
 
@@ -1632,7 +1633,7 @@ describe('Auth', () => {
     expect(await updatedRes.data.comparePassword(newPassword)).toEqual(true);
   });
 
-  it.only('Should login user with its PIN number', async () => {
+  it('Should login user with its PIN number', async () => {
     const auth = Auth.getInstance();
 
     const user = (await auth.createAuthUser({
