@@ -764,7 +764,7 @@ export class Auth {
    * @returns 
    */
   async changePassword(userId: any, password: string, newPassword: string, force: boolean = false): Promise<IAuthResponse<AuthUser>> {
-    if (!userId || !newPassword) {
+    if (!userId || !newPassword || (!force && !password)) {
       return {
         status: false,
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
