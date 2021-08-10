@@ -3,16 +3,21 @@ import { Pool } from 'mysql2/promise';
 import { AuthUser } from '../..';
 import { env } from '../../config/env';
 import { AuthAuthenticationErrorCode, AuthDbTables, AuthBadRequestErrorCode, AuthValidatorErrorCode, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode } from '../../config/types';
-import { PermissionPass } from '../auth-user/decorators/permission.decorator';
+import { PermissionPass } from './interfaces/permission-pass.interface';
 import { IAuthUser } from '../auth-user/interfaces/auth-user.interface';
 import { RolePermission } from '../auth-user/models/role-permission.model';
 import { Role } from '../auth-user/models/role.model';
 import { Token } from '../token/token.model';
 import { IAuthResponse } from './interfaces/auth-response.interface';
-import { IAuth } from './interfaces/auth.interface';
 import { INewPermission } from './interfaces/new-permission.interface';
 
-export class Auth implements IAuth {
+/**
+ * Authorization service.
+ */
+export class Auth {
+  /**
+   * Class instance so it can be used as singleton.
+   */
   private static instance: Auth;
 
   /**
@@ -27,7 +32,7 @@ export class Auth implements IAuth {
   }
 
   /**
-   * Return array of auth users
+   * Return array of auth users.
    * @param filter Pagination parameters. Can contain limit, offset and orderArr (array of properties to order by)
    * @param params Parameters to search by (id, search, status, role)
    * @returns list of auth user data objects.

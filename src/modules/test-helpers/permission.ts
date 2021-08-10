@@ -19,3 +19,10 @@ export async function insertRoleWithPermissions(role: string, permissions: INewP
   return newRole;
 }
 
+export async function createRoleWithPermissions(role: string, permissions: INewPermission[]) {
+  const roleId = await insertRoleWithPermissions(role, permissions);
+  
+  return {
+    role: roleId,
+  };
+}

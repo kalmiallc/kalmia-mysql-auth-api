@@ -3,13 +3,11 @@ import * as jwt from 'jsonwebtoken';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
 import { env } from '../../../config/env';
-import { AuthAuthenticationErrorCode, AuthBadRequestErrorCode, AuthDbTables, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
+import { AuthAuthenticationErrorCode, AuthDbTables, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
 import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
-import { insertRoleWithPermissions } from '../../test-helpers/permission';
-import { INewPermission } from '../interfaces/new-permission.interface';
-
+import { createRoleWithPermissions, insertRoleWithPermissions } from '../../test-helpers/permission';
 
 describe('Auth', () => {
 
@@ -1386,10 +1384,3 @@ describe('Auth', () => {
   });
 
 });
-
-async function createRoleWithPermissions(role: string, permissions: INewPermission[]) {
-  let roleId = await insertRoleWithPermissions(role, permissions);
-  return {
-    role: roleId,
-  };
-}
