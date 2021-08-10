@@ -502,8 +502,10 @@ export class AuthUser extends BaseModel {
     }
     if (isSingleTrans) {
       options.conn = await mySqlHelper.start();
-      mySqlHelper = new MySqlUtil(options.conn);
     }
+    
+    mySqlHelper = new MySqlUtil(options.conn);
+
     try {
       const createQuery = `
       INSERT INTO \`${this.tableName}\`
