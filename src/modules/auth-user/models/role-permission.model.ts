@@ -5,7 +5,7 @@ import * as mysql from 'mysql2/promise';
 import { BaseModel, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { AuthDbTables, PermissionLevel, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
-import { PermissionPass } from '../decorators/permission.decorator';
+import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 
 /**
  * Role permission model

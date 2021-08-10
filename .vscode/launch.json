@@ -19,7 +19,7 @@
     {
       "type": "pwa-node",
       "request": "launch",
-      "name": "Jest Test custom file",
+      "name": "Jest Test Current file",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": ["--runInBand", "--config=${workspaceFolder}/jest.config.ts", "--detectOpenHandles", "${fileBasename}" ],
       "env": {

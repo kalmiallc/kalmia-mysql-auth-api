@@ -5,7 +5,7 @@ import { presenceValidator } from '@rawmodel/validators';
 import { BaseModel, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { Pool, PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
-import { PermissionPass } from '../decorators/permission.decorator';
+import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 import { RolePermission } from './role-permission.model';
 
 /**

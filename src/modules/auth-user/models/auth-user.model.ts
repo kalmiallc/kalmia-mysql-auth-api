@@ -9,7 +9,7 @@ import { RolePermission } from './role-permission.model';
 import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldValue } from 'kalmia-sql-lib';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
-import { PermissionPass } from '../decorators/permission.decorator';
+import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 
 /**
  * Conditional presence validator based on ID property.
@@ -465,16 +465,17 @@ export class AuthUser extends BaseModel {
       }
     }
 
-    const res = new MySqlUtil(await MySqlConnManager.getInstance().getConnection()).paramQuery(`
+    await new MySqlUtil(await MySqlConnManager.getInstance().getConnection()).paramQuery(`
       UPDATE \`${this.tableName}\`
       SET
-        ${Object.keys(filtered)
+        ${Object
+    .keys(updatable)
     .map((x) => `\`${x}\` = @${x}`)
     .join(',\n')}
       WHERE id = @id
       `,
     {
-      ...filtered,
+      ...updatable,
       id: this.id,
     }
     );

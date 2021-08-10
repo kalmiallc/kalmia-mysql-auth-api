@@ -3,13 +3,11 @@ import * as jwt from 'jsonwebtoken';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
 import { env } from '../../../config/env';
-import { AuthAuthenticationErrorCode, AuthBadRequestErrorCode, AuthDbTables, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
+import { AuthAuthenticationErrorCode, AuthDbTables, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode, AuthValidatorErrorCode, PermissionLevel, PermissionType } from '../../../config/types';
 import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
-import { insertRoleWithPermissions } from '../../test-helpers/permission';
-import { INewPermission } from '../interfaces/new-permission.interface';
-
+import { createRoleWithPermissions, insertRoleWithPermissions } from '../../test-helpers/permission';
 
 describe('Auth', () => {
 
@@ -887,6 +885,7 @@ describe('Auth', () => {
     );
 
   });
+
   it('Try adding permissions to nonexistent role (should fail)', async () => {
     const auth = Auth.getInstance();
 
@@ -905,7 +904,7 @@ describe('Auth', () => {
     expect(failure.status).toBe(false);
     expect(failure.errors).toEqual(
       expect.arrayContaining([
-        AuthValidatorErrorCode.ROLE_ID_NOT_PRESENT
+        AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS
       ])
     );
 
@@ -1156,7 +1155,7 @@ describe('Auth', () => {
     )
   });
 
-  it('Login - OK', async () => {
+  it('Login Email - OK', async () => {
     const auth = Auth.getInstance();
 
     const obj = {
@@ -1189,7 +1188,7 @@ describe('Auth', () => {
     )
   });
 
-  it('Login - Bad password', async () => {
+  it('Login Email - Bad password', async () => {
     const auth = Auth.getInstance();
 
     const obj = {
@@ -1385,11 +1384,318 @@ describe('Auth', () => {
     expect(canAccess.data).toBe(true);
   });
 
-});
+  it('Should login user with its username and password', async () => {
+    const auth = Auth.getInstance();
 
-async function createRoleWithPermissions(role: string, permissions: INewPermission[]) {
-  let roleId = await insertRoleWithPermissions(role, permissions);
-  return {
-    role: roleId,
-  };
-}
+    const obj = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    };
+
+    const user = await auth.createAuthUser(obj);
+    const token = await auth.loginUsername(obj.username, obj.password);
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 1,
+        }),
+      ]),
+    );
+
+    const contents = jwt.decode(token.data);
+    expect(contents).toEqual(
+      expect.objectContaining({
+        id: user.data.id,
+        sub: AuthJwtTokenType.USER_AUTHENTICATION,
+      })
+    )
+  });
+
+  it('Should not login user with its username and incorrect password', async () => {
+    const auth = Auth.getInstance();
+
+    const obj = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    };
+    const user = await auth.createAuthUser(obj);
+    const token = await auth.loginUsername(obj.username, 'bad_password');
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 0,
+        }),
+      ]),
+    );
+
+    expect(token.status).toEqual(false)
+    expect(token.errors).toEqual(
+      expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED])
+    )
+  });
+
+  it('Should not login non existing user', async () => {
+    const auth = Auth.getInstance();
+
+    const obj = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    };
+    const user = await auth.createAuthUser(obj);
+    const token = await auth.loginUsername('wrong_username', obj.password);
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 0,
+        }),
+      ]),
+    );
+
+    expect(token.status).toEqual(false)
+    expect(token.errors).toEqual(
+      expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS])
+    )
+  });
+
+  it('Should change user\'s username', async () => {
+    const auth = Auth.getInstance();
+    const newUsername = "new_username";
+
+    const obj = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    };
+    const user = (await auth.createAuthUser(obj)).data;
+
+    const updatedRes = await auth.changeUsername(user.id, newUsername);
+    const updatedUser = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT * FROM \`${AuthDbTables.USERS}\`
+       WHERE username = @newUsername
+      `,
+      {
+        newUsername
+      }
+    );
+    
+    expect(updatedRes.status).toEqual(true);
+    expect(updatedRes.data.username).toEqual(newUsername);
+    expect(updatedUser.length).toBe(1);
+  });
+
+  it('Should not change user\'s username that is already taken', async () => {
+    const auth = Auth.getInstance();
+
+    const existingUser = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    })).data
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    })).data;
+
+    const updatedRes = await auth.changeUsername(user.id, existingUser.username);
+    expect(updatedRes.status).toEqual(false);
+    expect(updatedRes.errors).toEqual(
+      expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN])
+    )
+  });
+
+  it('Should change user\'s email', async () => {
+    const auth = Auth.getInstance();
+    const newEmail = `${Math.floor(Math.random() * 10_000)}@domain-example.com`;
+
+    const obj = {
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    };
+    const user = (await auth.createAuthUser(obj)).data;
+
+    const updatedRes = await auth.changeEmail(user.id, newEmail);
+    const updatedUser = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT * FROM \`${AuthDbTables.USERS}\`
+       WHERE email = @newEmail
+      `,
+      {
+        newEmail
+      }
+    );
+    
+    expect(updatedRes.status).toEqual(true);
+    expect(updatedRes.data.email).toEqual(newEmail);
+    expect(updatedUser.length).toBe(1);
+  });
+
+  it('Should not change user\'s email that is already taken', async () => {
+    const auth = Auth.getInstance();
+
+    const existingUser = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    })).data
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password()
+    })).data;
+
+    const updatedRes = await auth.changeEmail(user.id, existingUser.email);
+    expect(updatedRes.status).toEqual(false);
+    expect(updatedRes.errors).toEqual(
+      expect.arrayContaining([AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN])
+    )
+  });
+
+  it('Should change user\'s password if the correct current password is provided', async () => {
+    const auth = Auth.getInstance();
+    const currentPassword = faker.internet.password();
+    const newPassword = faker.internet.password();
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: currentPassword
+    })).data;
+
+    const updatedRes = await auth.changePassword(user.id, currentPassword, newPassword);
+    expect(updatedRes.status).toEqual(true);
+    expect(await updatedRes.data.comparePassword(newPassword)).toEqual(true);
+  });
+
+  it('Should not change user\'s password if the incorrect current password is provided', async () => {
+    const auth = Auth.getInstance();
+    const currentPassword = faker.internet.password();
+    const newPassword = faker.internet.password();
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: currentPassword
+    })).data;
+
+    const updatedRes = await auth.changePassword(user.id, 'incorrect_password', newPassword);
+    expect(updatedRes.status).toEqual(false);
+    expect(updatedRes.errors).toEqual(
+      expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED])
+    )
+  });
+
+  it('Should change user\'s password if the incorrect current password is provided, but force parameter is set on TRUE', async () => {
+    const auth = Auth.getInstance();
+    const currentPassword = faker.internet.password();
+    const newPassword = faker.internet.password();
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: currentPassword
+    })).data;
+
+    const updatedRes = await auth.changePassword(user.id, 'incorrect_password', newPassword, true);
+    expect(updatedRes.status).toEqual(true);
+    expect(await updatedRes.data.comparePassword(newPassword)).toEqual(true);
+  });
+
+  it('Should login user with its PIN number', async () => {
+    const auth = Auth.getInstance();
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password(),
+      PIN: '1234'
+    })).data;
+
+    const token = await auth.loginPin(user.PIN);
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 1,
+        }),
+      ]),
+    );
+
+    const contents = jwt.decode(token.data);
+    expect(contents).toEqual(
+      expect.objectContaining({
+        id: user.id,
+        sub: AuthJwtTokenType.USER_AUTHENTICATION,
+      })
+    )
+  });
+
+  it('Should not login user with its incorrect PIN number', async () => {
+    const auth = Auth.getInstance();
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password(),
+      PIN: '1234'
+    })).data;
+
+    const token = await auth.loginPin('2345');
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 0,
+        }),
+      ]),
+    );
+
+    expect(token.status).toEqual(false)
+    expect(token.errors).toEqual(
+      expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED])
+    )
+  });
+
+});

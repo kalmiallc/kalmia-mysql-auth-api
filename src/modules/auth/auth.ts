@@ -3,16 +3,21 @@ import { Pool } from 'mysql2/promise';
 import { AuthUser } from '../..';
 import { env } from '../../config/env';
 import { AuthAuthenticationErrorCode, AuthDbTables, AuthBadRequestErrorCode, AuthValidatorErrorCode, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode } from '../../config/types';
-import { PermissionPass } from '../auth-user/decorators/permission.decorator';
+import { PermissionPass } from './interfaces/permission-pass.interface';
 import { IAuthUser } from '../auth-user/interfaces/auth-user.interface';
 import { RolePermission } from '../auth-user/models/role-permission.model';
 import { Role } from '../auth-user/models/role.model';
 import { Token } from '../token/token.model';
 import { IAuthResponse } from './interfaces/auth-response.interface';
-import { IAuth } from './interfaces/auth.interface';
 import { INewPermission } from './interfaces/new-permission.interface';
 
-export class Auth implements IAuth {
+/**
+ * Authorization service.
+ */
+export class Auth {
+  /**
+   * Class instance so it can be used as singleton.
+   */
   private static instance: Auth;
 
   /**
@@ -27,7 +32,7 @@ export class Auth implements IAuth {
   }
 
   /**
-   * Return array of auth users
+   * Return array of auth users.
    * @param filter Pagination parameters. Can contain limit, offset and orderArr (array of properties to order by)
    * @param params Parameters to search by (id, search, status, role)
    * @returns list of auth user data objects.
@@ -104,10 +109,11 @@ export class Auth implements IAuth {
         data: res,
         status: true,
       };
-    } catch (e) {
+    } catch (error) {
       return {
         errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
         status: false,
+        details: error,
       };
     }
   }
@@ -128,7 +134,7 @@ export class Auth implements IAuth {
     } else {
       return {
         status: false,
-        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS],
       };
     }    
   }
@@ -408,34 +414,38 @@ export class Auth implements IAuth {
   }
 
   /**
-   * Creates a new role, provided one with the same name doesn't already exist
-   * @param name Name of the new role
-   * @returns Role object of the new role
+   * Creates a new role, provided one with the same name doesn't already exist.
+   * @param name Name of the new role.
+   * @returns Newly created role.
    */
   async createRole(name: string): Promise<IAuthResponse<Role>> {
-    const role = await new Role({ name });
+    const role = new Role({ name });
     try {
       await role.validate();
-    } catch (e) {
+    } catch (error) {
+      await role.handle(error);
+    }
+
+    if (role.isValid()) {
+      try {
+        await role.create();
+        return {
+          status: true,
+          data: role
+        };
+      } catch (error) {
+        return {
+          status: false,
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+          details: error
+        };
+      }
+    } else {
       return {
         status: false,
-        errors: [AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT]
+        errors: role.collectErrors().map(x => x.code)
       };
     }
-
-    try {
-      await role.create();
-      return {
-        status: true,
-        data: role
-      };
-    } catch (e) {
-    }
-
-    return {
-      status: false,
-      errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
-    };
   }
 
   /**
@@ -471,11 +481,12 @@ export class Auth implements IAuth {
       `;
       const dataRole = await mySqlHelper.paramExecute(queryRole, { name }, conn);
       await new MySqlUtil(conn).commit(conn);
-    } catch (e) {
+    } catch (error) {
       await new MySqlUtil(conn).rollback(conn);
       return {
         status: false,
-        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error
       };
     }
     return {
@@ -500,26 +511,31 @@ export class Auth implements IAuth {
       `,
         { role }
       );
+
       if (!roleId.length) {
         return {
           status: false,
-          errors: [AuthValidatorErrorCode.ROLE_ID_NOT_PRESENT]
+          errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
         };
       }
+
       for (const permission of permissions) {
         const rolePerm = new RolePermission({
           role_id: roleId[0].id,
         }).populate(permission);
+
         if (!await rolePerm.existsInDb()) {
           await rolePerm.create();
         }
       }
-    } catch (e) {
+    } catch (error) {
       return {
         status: false,
-        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error,
       };
     }
+  
     const roleObj = await new Role().populateByName(role);
     return {
       status: true,
@@ -547,7 +563,7 @@ export class Auth implements IAuth {
       if (!roleId.length) {
         return {
           status: false,
-          errors: [AuthValidatorErrorCode.ROLE_ID_NOT_PRESENT]
+          errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
         };
       }
 
@@ -567,10 +583,11 @@ export class Auth implements IAuth {
         status: true,
         data: roleObj.rolePermissions,
       };
-    } catch (e) {
+    } catch (error) {
       return {
         status: false,
-        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error
       };
     }
   }
@@ -673,8 +690,8 @@ export class Auth implements IAuth {
 
     try {
       await user.validate();
-    } catch (err) {
-      await user.handle(err);
+    } catch (error) {
+      await user.handle(error);
     }
 
     if (user.isValid()) {
@@ -683,7 +700,8 @@ export class Auth implements IAuth {
       } catch (error) {
         return {
           status: false,
-          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+          details: error,
         };
       }
 
@@ -713,10 +731,11 @@ export class Auth implements IAuth {
         status: true,
         data: user
       };
-    } catch (e) {
+    } catch (error) {
       return {
         status: false,
-        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error,
       };
     }
   }
@@ -744,8 +763,8 @@ export class Auth implements IAuth {
    * @param force 
    * @returns 
    */
-  async changePassword(userId: any, password: string, newPassword: string, force: boolean = false) {
-    if (!userId || !newPassword) {
+  async changePassword(userId: any, password: string, newPassword: string, force: boolean = false): Promise<IAuthResponse<AuthUser>> {
+    if (!userId || !newPassword || (!force && !password)) {
       return {
         status: false,
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
@@ -779,7 +798,8 @@ export class Auth implements IAuth {
         } catch (error) {
           return {
             status: false,
-            errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+            errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+            details: error,
           };
         }
 
@@ -801,9 +821,9 @@ export class Auth implements IAuth {
    * Updates user's email.
    * @param userId User's ID.
    * @param email User's new email.
-   * @returns 
+   * @returns Updated auth user.
    */
-  async changeEmail(userId: any, email: string) {
+  async changeEmail(userId: any, email: string): Promise<IAuthResponse<AuthUser>> {
     if (!userId || !email) {
       return {
         status: false,
@@ -837,7 +857,8 @@ export class Auth implements IAuth {
       } catch (error) {
         return {
           status: false,
-          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+          details: error,
         };
       }
 
@@ -852,9 +873,9 @@ export class Auth implements IAuth {
    * Updates user's username.
    * @param userId User's ID.
    * @param username User's new username.
-   * @returns 
+   * @returns Updated auth user.
    */
-  async changeUsername(userId: any, username: string) {
+  async changeUsername(userId: any, username: string): Promise<IAuthResponse<AuthUser>> {
     if (!userId || !username) {
       return {
         status: false,
@@ -888,7 +909,8 @@ export class Auth implements IAuth {
       } catch (error) {
         return {
           status: false,
-          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR]
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+          details: error,
         };
       }
 
