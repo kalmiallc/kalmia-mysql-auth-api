@@ -67,7 +67,8 @@ export enum AuthSystemErrorCode {
  */
 export enum AuthResourceNotFoundErrorCode {
   DEFAULT_RESOURCE_NOT_FOUND_ERROR = 404000,
-  AUTH_USER_DOES_NOT_EXISTS = 404001
+  AUTH_USER_DOES_NOT_EXISTS = 404001,
+  ROLE_DOES_NOT_EXISTS = 404002,
 }
 
 /**

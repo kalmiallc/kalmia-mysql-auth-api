@@ -1,3 +1,6 @@
+/**
+ * Auth user definition interface.
+ */
 export interface IAuthUser {
   id: number;
   status?: number;
