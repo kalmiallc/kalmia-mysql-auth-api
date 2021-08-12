@@ -156,7 +156,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
       }
     ],
-    fakeValue: `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`,
+    fakeValue: () => `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`,
   })
   public PIN: string;
 
@@ -503,8 +503,10 @@ export class AuthUser extends BaseModel {
     }
     if (isSingleTrans) {
       options.conn = await mySqlHelper.start();
-      mySqlHelper = new MySqlUtil(options.conn);
     }
+    
+    mySqlHelper = new MySqlUtil(options.conn);
+
     try {
       const createQuery = `
       INSERT INTO \`${this.tableName}\`
