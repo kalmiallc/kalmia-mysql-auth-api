@@ -156,7 +156,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
       }
     ],
-    fakeValue: `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`,
+    fakeValue: () => `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`,
   })
   public PIN: string;
 
