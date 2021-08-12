@@ -11,9 +11,9 @@ import {
   AuthBadRequestErrorCode,
   AuthAuthenticationErrorCode,
   AuthJwtTokenType,
-  AuthServiceModel,
   AuthSystemErrorCode,
   AuthResourceNotFoundErrorCode,
+  AuthServiceErrorPrefix,
 } from './config/types';
 import { IAuthEnv, env } from './config/env';
 import { INewPermission } from './modules/auth/interfaces/new-permission.interface';
@@ -41,7 +41,7 @@ export {
   AuthResourceNotFoundErrorCode,
   AuthJwtTokenType,
   PermissionPass,
-  AuthServiceModel,
+  AuthServiceErrorPrefix,
 
   IAuthEnv,
   env

@@ -501,10 +501,10 @@ export class AuthUser extends BaseModel {
       const pool = (await MySqlConnManager.getInstance().getConnection()) as PoolConnection;
       mySqlHelper = new MySqlUtil(pool);
     }
+
     if (isSingleTrans) {
       options.conn = await mySqlHelper.start();
     }
-    
     mySqlHelper = new MySqlUtil(options.conn);
 
     try {
