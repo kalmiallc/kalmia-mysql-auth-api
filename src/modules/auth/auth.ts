@@ -921,4 +921,56 @@ export class Auth {
     }
   }
 
+  /**
+   * Updates user's username and email fields.
+   * @param userId User's ID.
+   * @param data User's data.
+   * @returns Updated auth user.
+   */
+  async update(userId: any, data: any): Promise<IAuthResponse<AuthUser>> {
+    if (data?.password) {
+      delete data.password;
+    }
+
+    const authUser = await new AuthUser().populateById(userId);
+    if (!authUser.isPersistent()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+      };
+    }
+
+    authUser.populate(data);
+    try {
+      await authUser.validate();
+    } catch (error) {
+      await authUser.handle(error);
+    }
+
+    if (!authUser.isValid()) {
+      return {
+        status: false,
+        errors: authUser.collectErrors().map(x => x.code)
+      };
+    } else {
+      try {
+        await authUser.updateNonUpdatableFields([
+          'username',
+          'email',
+        ]);
+      } catch (error) {
+        return {
+          status: false,
+          errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+          details: error,
+        };
+      }
+
+      return {
+        status: true,
+        data: authUser
+      };
+    }
+  }
+
 }

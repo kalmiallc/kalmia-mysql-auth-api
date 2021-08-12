@@ -11,6 +11,9 @@ import { PermissionPass } from '../../auth/interfaces/permission-pass.interface'
  * Role permission model
  */
 export class RolePermission extends BaseModel {
+  /**
+   * 
+   */
   tableName: AuthDbTables = AuthDbTables.ROLE_PERMISSIONS;
 
   /**

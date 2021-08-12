@@ -1,5 +1,12 @@
 /* eslint-disable no-shadow */
+import { AuthUser } from 'src/modules/auth-user/models/auth-user.model';
+import { RolePermission } from 'src/modules/auth-user/models/role-permission.model';
+import { Role } from 'src/modules/auth-user/models/role.model';
+import { Token } from 'src/modules/token/token.model';
 
+/**
+ * List of authentication service database tables.
+ */
 export enum AuthDbTables {
   USERS = 'auth_user',
   TOKENS = 'auth_token',
@@ -8,12 +15,18 @@ export enum AuthDbTables {
   ROLE_PERMISSIONS = 'auth_role_permission',
 }
 
+/**
+ * Permission types definitions.
+ */
 export enum PermissionType {
   READ = 'read',
   WRITE = 'write',
   EXECUTE = 'execute'
 }
 
+/**
+ * Permissions levels definitions.
+ */
 export enum PermissionLevel {
   NONE = 0,
   OWN = 1,
@@ -80,6 +93,9 @@ export enum AuthAuthenticationErrorCode {
   USER_NOT_AUTHENTICATED = 401003
 }
 
+/**
+ * Authentication JWT token types definitions.
+ */
 export enum AuthJwtTokenType {
   USER_AUTHENTICATION = 'USER_AUTHENTICATION',
   USER_SIGN_UP = 'USER_SIGN_UP',
@@ -87,3 +103,8 @@ export enum AuthJwtTokenType {
   USER_RESET_USERNAME = 'USER_RESET_USERNAME',
   USER_RESET_PASSWORD = 'USER_RESET_PASSWORD',
 }
+
+/**
+ * Auth service model type definition.
+ */
+export type AuthServiceModel = AuthUser | RolePermission | Role | Token;
