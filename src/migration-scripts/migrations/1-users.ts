@@ -9,9 +9,8 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
     \`email\` VARCHAR(255) NULL UNIQUE,
     \`passwordHash\` VARCHAR(255) NULL,
     \`PIN\` VARCHAR(4) NULL,
-    \`_createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    \`_updatedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    \`_deletedAt\` DATETIME NULL,
+    \`_createTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    \`_updateTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (\`id\`),
     UNIQUE INDEX \`email_UNIQUE\` (\`email\` ASC) VISIBLE,
     UNIQUE INDEX \`username_UNIQUE\` (\`username\` ASC) VISIBLE);

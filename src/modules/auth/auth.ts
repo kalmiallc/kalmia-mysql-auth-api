@@ -69,9 +69,8 @@ export class Auth {
           u.id, u.username, u.email, u.status, u.PIN,
           GROUP_CONCAT(r.name) as userRoles,
           IF(CHAR_LENGTH(u.passwordHash) > 15, 'true', 'false') hasPW,
-          u._createdAt,
-          u._updatedAt,
-          u._deletedAt
+          u._createTime,
+          u._updateTime
         `,
       qFrom: `
         FROM ${AuthDbTables.USERS} u
@@ -95,7 +94,7 @@ export class Auth {
         `,
       qGroup: `
         GROUP BY
-          u.id, u.username, u.email, u.status, u.pin, u._createdAt, u._updatedAt, u._deletedAt,
+          u.id, u.username, u.email, u.status, u.pin, u._createTime, u._updateTime,
           hasPW
         `,
       qFilter: `
@@ -126,7 +125,7 @@ export class Auth {
   async getAuthUserById(userId: number): Promise<IAuthResponse<AuthUser>> {
     const user = await new AuthUser().populateById(userId);
 
-    if (user.isPersistent()) {
+    if (user.exists()) {
       return {
         status: true,
         data: user,
@@ -147,7 +146,7 @@ export class Auth {
   async getAuthUserByEmail(email: string): Promise<IAuthResponse<AuthUser>> {
     const user = await new AuthUser().populateByEmail(email);
 
-    if (user.isPersistent()) {
+    if (user.exists()) {
       return {
         status: true,
         data: user,
@@ -283,7 +282,7 @@ export class Auth {
     }
 
     const user = await new AuthUser().populateById(userId);
-    if (!user.isPersistent()) {
+    if (!user.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
@@ -614,7 +613,7 @@ export class Auth {
   async loginEmail(email: string, password: string): Promise<IAuthResponse<string>> {
     const user: AuthUser = await new AuthUser({}).populateByEmail(email);
 
-    if (!user.isPersistent()) {
+    if (!user.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
@@ -640,7 +639,7 @@ export class Auth {
   async loginUsername(username: string, password: string): Promise<IAuthResponse<string>> {
     const user: AuthUser = await new AuthUser({}).populateByUsername(username);
 
-    if (!user.isPersistent()) {
+    if (!user.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
@@ -665,7 +664,7 @@ export class Auth {
   async loginPin(pin: string): Promise<IAuthResponse<string>> {
     const user: AuthUser = await new AuthUser({}).populateByPin(pin);
   
-    if (!user.isPersistent()) {
+    if (!user.exists()) {
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
@@ -772,7 +771,7 @@ export class Auth {
     }
 
     const authUser = await new AuthUser().populateById(userId);
-    if (!authUser.isPersistent()) {
+    if (!authUser.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
@@ -832,7 +831,7 @@ export class Auth {
     }
 
     const authUser = await new AuthUser().populateById(userId);
-    if (!authUser.isPersistent()) {
+    if (!authUser.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
@@ -884,7 +883,7 @@ export class Auth {
     }
 
     const authUser = await new AuthUser().populateById(userId);
-    if (!authUser.isPersistent()) {
+    if (!authUser.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
@@ -933,7 +932,7 @@ export class Auth {
     }
 
     const authUser = await new AuthUser().populateById(userId);
-    if (!authUser.isPersistent()) {
+    if (!authUser.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]

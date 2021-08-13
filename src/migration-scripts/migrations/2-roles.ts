@@ -6,9 +6,8 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
     \`id\` INT NOT NULL AUTO_INCREMENT,
     \`status\` INT NOT NULL DEFAULT 5,
     \`name\` VARCHAR(100) NOT NULL,
-    \`_createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    \`_updatedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    \`_deletedAt\` DATETIME NULL,
+    \`_createTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    \`_updateTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (\`id\`),
     UNIQUE INDEX \`name_UNIQUE\` (\`name\` ASC) VISIBLE);
   `);

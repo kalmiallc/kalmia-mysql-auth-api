@@ -490,9 +490,8 @@ export class AuthUser extends BaseModel {
     const serializedModel = this.serialize(SerializeFor.INSERT_DB);
 
     // remove non-creatable parameters
-    delete serializedModel._createdAt;
-    delete serializedModel._deletedAt;
-    delete serializedModel._updatedAt;
+    delete serializedModel._createTime;
+    delete serializedModel._updateTime;
 
     let isSingleTrans = false;
     let mySqlHelper: MySqlUtil;
@@ -526,8 +525,8 @@ export class AuthUser extends BaseModel {
       }
 
       if (isSingleTrans) {
-        this._createdAt = new Date();
-        this._updatedAt = this._createdAt;
+        this._createTime = new Date();
+        this._updateTime = this._createTime;
         await mySqlHelper.commit(options.conn);
       }
     } catch (err) {
