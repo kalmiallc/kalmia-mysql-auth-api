@@ -1,0 +1,37 @@
+version: '3.5'
+services:
+  api:
+    image: kalmia-mysql-auth-api
+    env_file: ./.env.test
+    build:
+      context: .
+      target: build
+      args:
+        - AUTH_REPO_ACCESS_KEY
+    command: npm run test
+    environment:
+      - ENVIRONMENT=test
+      - MYSQL_HOST=localhost
+      - MYSQL_PORT=$MYSQL_PORT_TEST
+    depends_on:
+      - mysqldb
+    networks:
+      - db-net
+      - frontend
+    ports:
+      - 4445:4445
+  mysqldb:
+    image: mysql
+    env_file: ./.env.test
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+      MYSQL_ROOT_PASSWORD: $MYSQL_PASSWORD_TEST
+      MYSQL_DATABASE: $MYSQL_DB_TEST
+    ports:
+      - '$MYSQL_PORT_TEST:$MYSQL_PORT_TEST'
+    networks:
+        - db-net
+networks:
+  frontend:
+  db-net:
+    internal: true
