@@ -10,21 +10,22 @@ services:
         - AUTH_REPO_ACCESS_KEY
     command: npm run test
     environment:
-      - ENVIRONMENT=test
-      - MYSQL_HOST=localhost
-      - MYSQL_PORT=$MYSQL_PORT_TEST
+      - APP_ENV=testing
+      - MYSQL_DB_TEST=$MYSQL_DB_TEST
+      - MYSQL_PORT_TEST=$MYSQL_PORT_TEST
+      - MYSQL_HOST_TEST=localhost
+      - MYSQL_USER_TEST=$MYSQL_USER_TEST
     depends_on:
       - mysqldb
     networks:
       - db-net
-      - frontend
     ports:
-      - 4445:4445
+      - '$MYSQL_PORT_TEST:$MYSQL_PORT_TEST'
   mysqldb:
     image: mysql
+    command: --default-authentication-plugin=mysql_native_password
     env_file: ./.env.test
     environment:
-      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
       MYSQL_ROOT_PASSWORD: $MYSQL_PASSWORD_TEST
       MYSQL_DATABASE: $MYSQL_DB_TEST
     ports:
@@ -32,6 +33,5 @@ services:
     networks:
         - db-net
 networks:
-  frontend:
   db-net:
     internal: true
