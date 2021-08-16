@@ -4,11 +4,11 @@
  * List of authentication service database tables.
  */
 export enum AuthDbTables {
-  USERS = 'auth_user',
-  TOKENS = 'auth_token',
-  ROLES = 'auth_role',
-  USER_ROLES = 'auth_user_role',
-  ROLE_PERMISSIONS = 'auth_role_permission',
+  USERS = 'authUser',
+  TOKENS = 'authToken',
+  ROLES = 'authRole',
+  USER_ROLES = 'authUserRole',
+  ROLE_PERMISSIONS = 'authRolePermission',
 }
 
 /**
