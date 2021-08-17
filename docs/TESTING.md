@@ -17,6 +17,7 @@ sudo docker exec -it test-mysql bin/bash
 Before running tests export the needed env variables:
  
 ```bash
+export APP_ENV=testing
 export MYSQL_DB_TEST=auth_test_db
 export MYSQL_USER_TEST=root
 export MYSQL_PASSWORD_TEST=test

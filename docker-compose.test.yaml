@@ -13,14 +13,10 @@ services:
       - APP_ENV=testing
       - MYSQL_DB_TEST=$MYSQL_DB_TEST
       - MYSQL_PORT_TEST=$MYSQL_PORT_TEST
-      - MYSQL_HOST_TEST=localhost
+      - MYSQL_HOST_TEST=mysqldb
       - MYSQL_USER_TEST=$MYSQL_USER_TEST
     depends_on:
       - mysqldb
-    networks:
-      - db-net
-    ports:
-      - '$MYSQL_PORT_TEST:$MYSQL_PORT_TEST'
   mysqldb:
     image: mysql
     command: --default-authentication-plugin=mysql_native_password
@@ -30,8 +26,3 @@ services:
       MYSQL_DATABASE: $MYSQL_DB_TEST
     ports:
       - '$MYSQL_PORT_TEST:$MYSQL_PORT_TEST'
-    networks:
-        - db-net
-networks:
-  db-net:
-    internal: true
