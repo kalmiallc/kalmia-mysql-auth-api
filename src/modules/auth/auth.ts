@@ -105,7 +105,7 @@ export class Auth {
     try {
       const res = await selectAndCountQuery(mysqlUtil, sqlQuery, params, 'u.id');
       return {
-        data: res,
+        data: res.items,
         status: true,
       };
     } catch (error) {
@@ -621,7 +621,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
     } else {
       return {
         status: false,
@@ -647,7 +647,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
     } else {
       return {
         status: false,
@@ -659,10 +659,11 @@ export class Auth {
   /**
    * Validates user's login credentials. If accepted, returns authentication JWT.
    * @param pin User's PIN number.
+   * @param allowedRoleIds List of role IDs that are allowed to use PIN authentication.
    * @returns Authentication JWT
    */
-  async loginPin(pin: string): Promise<IAuthResponse<string>> {
-    const user: AuthUser = await new AuthUser({}).populateByPin(pin);
+  async loginPin(pin: string, allowedRoleIds: number[]): Promise<IAuthResponse<string>> {
+    const user = await new AuthUser({}).populateByPin(pin);
   
     if (!user.exists()) {
       return {
@@ -670,8 +671,24 @@ export class Auth {
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
-  
-    return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+
+    if (allowedRoleIds.length == 0) {
+      return {
+        status: false,
+        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+      };
+    }
+
+    for (const roleId of allowedRoleIds) {
+      if (!(await user.hasRole(roleId))) {
+        return {
+          status: false,
+          errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+        };
+      }
+    }
+
+    return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
   }
 
 

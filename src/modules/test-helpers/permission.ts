@@ -2,7 +2,6 @@ import { RolePermission } from '../auth-user/models/role-permission.model';
 import { Role } from '../auth-user/models/role.model';
 import { INewPermission } from '../auth/interfaces/new-permission.interface';
 
-
 export async function insertRoleWithPermissions(role: string, permissions: INewPermission[]) {
   const newRole = new Role({ name: role });
   await newRole.create();
@@ -17,12 +16,4 @@ export async function insertRoleWithPermissions(role: string, permissions: INewP
   await newRole.getRolePermissions();
 
   return newRole;
-}
-
-export async function createRoleWithPermissions(role: string, permissions: INewPermission[]) {
-  const roleId = await insertRoleWithPermissions(role, permissions);
-  
-  return {
-    role: roleId,
-  };
 }
