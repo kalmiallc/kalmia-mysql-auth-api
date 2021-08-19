@@ -1,3 +1,1 @@
-# Continuos integration and deployment 
-
-..TODO: How the continuos integration works.
+A general [CI-CD guides](https://bitbucket.org/kalmiadevs/kalmia-common-lib/src/master/docs/CI-CD.md) are a must read, and shall not be duplicated here. 
