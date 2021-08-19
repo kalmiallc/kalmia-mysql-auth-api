@@ -41,6 +41,7 @@ RUN ssh -T git@bitbucket.org && if [ $? -eq 0 ]; then echo 'TEST OK'; else echo 
 ADD . .
 RUN export BUILD_COMMIT=$(git rev-parse HEAD)
 RUN echo 'Making build on commit ${AUTH_REPO_ACCESS_KEY}' 
+RUN npm i --no-save
 RUN npm run build
 
 # This phase is skipped as it should be run from the docker compose file.
