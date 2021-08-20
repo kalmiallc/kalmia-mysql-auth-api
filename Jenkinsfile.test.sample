@@ -40,6 +40,7 @@ pipeline {
         string(name: 'MYSQL_USER_TEST', defaultValue: 'root', description: '')
         string(name: 'MYSQL_PASSWORD', defaultValue: 'test', description: '')
         string(name: 'MYSQL_DB', defaultValue: 'mysql-auth-lib', description: '')
+        string(name: 'LOG_TARGET', defaultValue: 'NONE', description: '')
     }
         
 
@@ -145,7 +146,6 @@ pipeline {
               echo('Build and tests failed')
               script {
                 currentBuild.result = 'FAILURE'
-                currentBuild.currentResult = 'FAILURE'
                 notifyBuild("FAIL", "Build and tests failed for build GIT sha: ${getGitCommit()}")
               }
             }
