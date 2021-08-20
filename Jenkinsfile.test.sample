@@ -38,7 +38,7 @@ pipeline {
         string(name: 'MYSQL_PORT_TEST', defaultValue: '3306', description: '')
         string(name: 'MYSQL_PORT', defaultValue: '3306', description: '')
         string(name: 'MYSQL_USER_TEST', defaultValue: 'root', description: '')
-        string(name: 'MYSQL_PASSWORD', defaultValue: 'test', description: '')
+        string(name: 'MYSQL_PASSWORD_TEST', defaultValue: 'test', description: '')
         string(name: 'MYSQL_DB', defaultValue: 'mysql-auth-lib', description: '')
         string(name: 'LOG_TARGET', defaultValue: 'NONE', description: '')
     }
