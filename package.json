@@ -9,8 +9,9 @@
     "index": "ts-node src/index.ts",
     "lint": "eslint -c .eslintrc.js --ext .ts ./src",
     "lintFix": "eslint --fix -c .eslintrc.js --ext .ts ./src",
-    "test": "cross-env NODE_ENV=testing npm run lintFix && npx jest --config jest.config.ts --detectOpenHandles --runInBand --forceExit",
-    "coverage": "cross-env NODE_ENV=testing npm run lint && npx jest --config jest.config.ts --detectOpenHandles --runInBand  --collectCoverage"
+    "testOnly": "cross-env APP_ENV=testing npx jest --config jest.config.ts --detectOpenHandles --runInBand --forceExit",
+    "test": "cross-env APP_ENV=testing npm run lintFix && npx jest --config jest.config.ts --detectOpenHandles --runInBand --forceExit",
+    "coverage": "cross-env APP_ENV=testing npm run lint && npx jest --config jest.config.ts --detectOpenHandles --runInBand  --collectCoverage"
   },
   "files": [
     "dist/**/*",
