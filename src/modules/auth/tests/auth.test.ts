@@ -7,7 +7,7 @@ import { AuthAuthenticationErrorCode, AuthDbTables, AuthJwtTokenType, AuthResour
 import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
-import { createRoleWithPermissions, insertRoleWithPermissions } from '../../test-helpers/permission';
+import { insertRoleWithPermissions } from '../../test-helpers/permission';
 
 describe('Auth', () => {
 
@@ -106,7 +106,7 @@ describe('Auth', () => {
   it('Add role to user', async () => {
     const user = await insertAuthUser();
     const roleStr = faker.lorem.words(3)
-    const role = await createRoleWithPermissions(roleStr, [
+    const role = await insertRoleWithPermissions(roleStr, [
       { permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
     const auth = Auth.getInstance();
@@ -127,7 +127,7 @@ describe('Auth', () => {
   it('Get user\'s roles', async () => {
     const user = await insertAuthUser();
     const roleStr = faker.lorem.words(3)
-    const role = await createRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role = await insertRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const auth = Auth.getInstance();
     await auth.grantRoles([roleStr], user.id);
     const roles = await auth.getAuthUserRoles(user.id);
@@ -147,9 +147,9 @@ describe('Auth', () => {
   it('Revoke user\'s roles and ignore those he doesn\'t have', async () => {
     const user = await insertAuthUser();
     const roleStr = faker.lorem.words(3)
-    const role = await createRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role = await insertRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const roleStrTwo = faker.lorem.words(3)
-    const role2 = await createRoleWithPermissions(roleStrTwo, [{ permission_id: 3, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role2 = await insertRoleWithPermissions(roleStrTwo, [{ permission_id: 3, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const auth = Auth.getInstance();
     await auth.grantRoles([roleStr], user.id);
 
@@ -167,11 +167,11 @@ describe('Auth', () => {
   it('Revoke user\'s roles and leave the ones not being removed', async () => {
     const user = await insertAuthUser();
     const roleStr = faker.lorem.words(3)
-    const role = await createRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role = await insertRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const roleStrTwo = faker.lorem.words(3)
-    const role2 = await createRoleWithPermissions(roleStrTwo, [{ permission_id: 4, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role2 = await insertRoleWithPermissions(roleStrTwo, [{ permission_id: 4, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const roleStrThree = faker.lorem.words(3)
-    const role3 = await createRoleWithPermissions(roleStrThree, [{ permission_id: 5, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role3 = await insertRoleWithPermissions(roleStrThree, [{ permission_id: 5, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const auth = Auth.getInstance();
     await auth.grantRoles([roleStr, roleStrThree], user.id);
 
@@ -198,13 +198,13 @@ describe('Auth', () => {
   it('Get user permissions', async () => {
     const user = await insertAuthUser();
     const roleStrThree = faker.lorem.words(3)
-    const role3 = await createRoleWithPermissions(roleStrThree, [{ permission_id: 5, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role3 = await insertRoleWithPermissions(roleStrThree, [{ permission_id: 5, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const roleStr = faker.lorem.words(3)
-    const role = await createRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role = await insertRoleWithPermissions(roleStr, [{ permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const roleStrFour = faker.lorem.words(3)
-    const role4 = await createRoleWithPermissions(roleStrFour, [{ permission_id: 6, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role4 = await insertRoleWithPermissions(roleStrFour, [{ permission_id: 6, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const roleStrTwo = faker.lorem.words(3)
-    const role2 = await createRoleWithPermissions(roleStrTwo, [{ permission_id: 4, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
+    const role2 = await insertRoleWithPermissions(roleStrTwo, [{ permission_id: 4, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]);
     const auth = Auth.getInstance();
     await auth.grantRoles([roleStr, roleStrThree], user.id);
 
@@ -1182,7 +1182,7 @@ describe('Auth', () => {
     const contents = jwt.decode(token.data);
     expect(contents).toEqual(
       expect.objectContaining({
-        id: user.data.id,
+        userId: user.data.id,
         sub: AuthJwtTokenType.USER_AUTHENTICATION,
       })
     )
@@ -1412,7 +1412,7 @@ describe('Auth', () => {
     const contents = jwt.decode(token.data);
     expect(contents).toEqual(
       expect.objectContaining({
-        id: user.data.id,
+        userId: user.data.id,
         sub: AuthJwtTokenType.USER_AUTHENTICATION,
       })
     )
@@ -1633,7 +1633,7 @@ describe('Auth', () => {
     expect(await updatedRes.data.comparePassword(newPassword)).toEqual(true);
   });
 
-  it('Should login user with its PIN number', async () => {
+  it('Should login user with its PIN number and allowed roles', async () => {
     const auth = Auth.getInstance();
 
     const user = (await auth.createAuthUser({
@@ -1644,7 +1644,12 @@ describe('Auth', () => {
       PIN: '1234'
     })).data;
 
-    const token = await auth.loginPin(user.PIN);
+    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+      { permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+    ]);
+    await auth.grantRoles([role.name], user.id);
+
+    const token = await auth.loginPin(user.PIN, [role.id]);
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
@@ -1661,13 +1666,13 @@ describe('Auth', () => {
     const contents = jwt.decode(token.data);
     expect(contents).toEqual(
       expect.objectContaining({
-        id: user.id,
+        userId: user.id,
         sub: AuthJwtTokenType.USER_AUTHENTICATION,
       })
     )
   });
 
-  it('Should not login user with its incorrect PIN number', async () => {
+  it('Should not login user with its incorrect PIN number and allowed roles', async () => {
     const auth = Auth.getInstance();
 
     const user = (await auth.createAuthUser({
@@ -1678,7 +1683,12 @@ describe('Auth', () => {
       PIN: '1234'
     })).data;
 
-    const token = await auth.loginPin('2345');
+    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+      { permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+    ]);
+    await auth.grantRoles([role.name], user.id);
+
+    const token = await auth.loginPin('2345', [role.id]);
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
@@ -1698,4 +1708,71 @@ describe('Auth', () => {
     )
   });
 
+  it('Should not login user with its correct PIN number and without allowed roles specified', async () => {
+    const auth = Auth.getInstance();
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password(),
+      PIN: '1234'
+    })).data;
+
+    const token = await auth.loginPin(user.PIN, []);
+    console.log(token);
+
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 0,
+        }),
+      ]),
+    );
+
+    expect(token.status).toEqual(false)
+    expect(token.errors).toEqual(
+      expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED])
+    )
+  });
+
+  it('Should not login user with its correct PIN number and without allowed roles', async () => {
+    const auth = Auth.getInstance();
+
+    const user = (await auth.createAuthUser({
+      id: faker.datatype.number(10_000_000),
+      username: faker.internet.userName(),
+      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+      password: faker.internet.password(),
+      PIN: '1234'
+    })).data;
+
+    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+      { permission_id: 1, read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+    ]);
+
+    const token = await auth.loginPin(user.PIN, [role.id]);
+    const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
+      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
+    );
+    
+    expect(tokens.length).toBe(1);
+    expect(tokens).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          COUNT: 0,
+        }),
+      ]),
+    );
+
+    expect(token.status).toEqual(false)
+    expect(token.errors).toEqual(
+      expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED])
+    )
+  });
 });
