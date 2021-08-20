@@ -621,7 +621,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
     } else {
       return {
         status: false,
@@ -647,7 +647,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
     } else {
       return {
         status: false,
@@ -662,7 +662,7 @@ export class Auth {
    * @returns Authentication JWT
    */
   async loginPin(pin: string): Promise<IAuthResponse<string>> {
-    const user: AuthUser = await new AuthUser({}).populateByPin(pin);
+    const user = await new AuthUser({}).populateByPin(pin);
   
     if (!user.exists()) {
       return {
@@ -670,8 +670,11 @@ export class Auth {
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
-  
-    return await this.generateToken({ id: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+
+    // for (const roleId in allowedRoleIds) {
+    //   await user.hasRole(roleId);
+    // }
+    return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
   }
 
 
