@@ -1720,8 +1720,6 @@ describe('Auth', () => {
     })).data;
 
     const token = await auth.loginPin(user.PIN, []);
-    console.log(token);
-
     const tokens = await (new MySqlUtil(await MySqlConnManager.getInstance().getConnection() as Pool)).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`,
     );
