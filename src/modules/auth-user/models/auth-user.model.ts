@@ -6,7 +6,7 @@ import * as bcrypt from 'bcryptjs';
 import { PoolConnection, Pool } from 'mysql2/promise';
 import { Role } from './role.model';
 import { RolePermission } from './role-permission.model';
-import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldValue } from 'kalmia-sql-lib';
+import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
@@ -55,7 +55,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_ID_NOT_PRESENT
       },
       {
-        resolver: uniqueFieldValue(AuthDbTables.USERS, 'id'),
+        resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'id'),
         code: AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
       }
     ],
@@ -91,7 +91,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_USERNAME_NOT_VALID
       },
       {
-        resolver: uniqueFieldValue(AuthDbTables.USERS, 'username'),
+        resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'username'),
         code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
       }
     ],
@@ -114,7 +114,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_EMAIL_NOT_VALID
       },
       {
-        resolver: uniqueFieldValue(AuthDbTables.USERS, 'email'),
+        resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'email'),
         code: AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN
       }
     ],
@@ -152,7 +152,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_PIN_NOT_CORRECT_LENGTH
       },
       {
-        resolver: uniqueFieldValue(AuthDbTables.USERS, 'PIN'),
+        resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'PIN'),
         code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
       }
     ],
@@ -375,11 +375,17 @@ export class AuthUser extends BaseModel {
    */
   public async getRoles(conn?: PoolConnection): Promise<AuthUser> {
     this.roles = [];
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    const rows = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
       SELECT 
         r.*, 
-        rp.*
+        rp.*,
+        rp.name as rpName,
+        rp.status as rpStatus,
+        rp._createTime as rpCreateTime,
+        rp._updateTime as rpUpdateTime,
+        rp._createUser as rpCreateUser,
+        rp._updateUser as rpUpdateUser
       FROM ${AuthDbTables.ROLES} r
       JOIN ${AuthDbTables.USER_ROLES} ur
         ON ur.role_id = r.id
@@ -393,16 +399,29 @@ export class AuthUser extends BaseModel {
       conn
     );
 
-    for (const r of res) {
-      let role = this.roles.find(x => x.id === r.id);
+    for (const row of rows) {
+      let role = this.roles.find(x => x.id === row.id);
       if (!role) {
-        role = new Role().populate(r, PopulateFor.DB);
+        role = new Role().populate(row, PopulateFor.DB);
         this.roles = [...this.roles, role];
       }
-      let permission = role.rolePermissions.find(x => x.permission_id == r.permission_id);
+      let permission = role.rolePermissions.find(x => x.permission_id == row.permission_id);
       if (!permission) {
-        permission = new RolePermission({}).populate(r, PopulateFor.DB);
-        role.rolePermissions = [...role.rolePermissions, permission];
+        permission = new RolePermission({}).populate({
+          ...row,
+          ...row.rpName ? { name: row.rpName } : { name: null },
+          ...row.rpStatus ? { status: row.rpStatus } : { status: null },
+          ...row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null },
+          ...row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null },
+          ...row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null },
+          ...row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
+          id: null
+        }, PopulateFor.DB);
+
+        if (permission.exists()) {
+          role.rolePermissions = [...role.rolePermissions, permission];
+        }
+
       }
     }
 

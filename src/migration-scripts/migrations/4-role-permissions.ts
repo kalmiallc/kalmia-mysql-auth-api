@@ -6,6 +6,7 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
   CREATE TABLE IF NOT EXISTS \`${AuthDbTables.ROLE_PERMISSIONS}\` (
     \`role_id\` INT NOT NULL,
     \`permission_id\` INT NOT NULL,
+    \`name\` VARCHAR(100) NOT NULL,
     \`status\` INT NOT NULL DEFAULT '${DbModelStatus.ACTIVE}',
     \`read\` INT NOT NULL DEFAULT 0,
     \`write\` INT NOT NULL DEFAULT 0,

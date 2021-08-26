@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/member-ordering */
-import { integerParser } from '@rawmodel/parsers';
+import { integerParser, stringParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
 import * as mysql from 'mysql2/promise';
 import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
@@ -33,7 +33,7 @@ export class RolePermission extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_ID_NOT_PRESENT,
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_ROLE_ID_NOT_PRESENT,
       },
     ],
   })
@@ -56,11 +56,37 @@ export class RolePermission extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.PERMISSION_NOT_PRESENT,
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_PERMISSION_ID_NOT_PRESENT,
       },
     ],
   })
   public permission_id: number;
+
+
+  /**
+   * Role permission's name property definition.
+   */
+  @prop({
+    parser: { resolver: stringParser() },
+    populatable: [
+      PopulateFor.DB,
+      PopulateFor.ADMIN,
+    ],
+    serializable: [
+      SerializeFor.PROFILE,
+      SerializeFor.ADMIN,
+      SerializeFor.INSERT_DB,
+      SerializeFor.UPDATE_DB,
+    ],
+    validators: [
+      {
+        resolver: presenceValidator(),
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_NAME_NOT_PRESENT,
+      },
+    ],
+  })
+  public name: string;
+
 
   /**
    * Role permission's read property definition. Represents level of read access.
@@ -80,7 +106,7 @@ export class RolePermission extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.READ_PERMISSION_LEVEL_NOT_SET,
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_SET,
       },
     ],
     fakeValue: () => PermissionLevel.ALL,
@@ -106,7 +132,7 @@ export class RolePermission extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.WRITE_PERMISSION_LEVEL_NOT_SET,
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_SET,
       },
     ],
     fakeValue: () => PermissionLevel.ALL,
@@ -132,7 +158,7 @@ export class RolePermission extends BaseModel {
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.EXECUTE_PERMISSION_LEVEL_NOT_SET,
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_SET,
       },
     ],
     fakeValue: () => PermissionLevel.ALL,

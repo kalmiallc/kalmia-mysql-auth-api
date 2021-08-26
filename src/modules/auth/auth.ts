@@ -2,7 +2,14 @@ import { DbModelStatus, MySqlConnManager, MySqlUtil, selectAndCountQuery } from 
 import { Pool } from 'mysql2/promise';
 import { AuthUser } from '../..';
 import { env } from '../../config/env';
-import { AuthAuthenticationErrorCode, AuthDbTables, AuthBadRequestErrorCode, AuthValidatorErrorCode, AuthJwtTokenType, AuthResourceNotFoundErrorCode, AuthSystemErrorCode } from '../../config/types';
+import {
+  AuthAuthenticationErrorCode,
+  AuthDbTables,
+  AuthBadRequestErrorCode,
+  AuthJwtTokenType,
+  AuthResourceNotFoundErrorCode,
+  AuthSystemErrorCode
+} from '../../config/types';
 import { PermissionPass } from './interfaces/permission-pass.interface';
 import { IAuthUser } from '../auth-user/interfaces/auth-user.interface';
 import { RolePermission } from '../auth-user/models/role-permission.model';
@@ -254,14 +261,17 @@ export class Auth {
     }
 
     const user = await new AuthUser().populateById(userId);
-    if (!user.id) {
+    if (!user.exists()) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
     }
 
     await user.getRoles();
+
+    console.log(JSON.stringify(user, null, 2));
+
     return {
       status: true,
       data: user.roles,

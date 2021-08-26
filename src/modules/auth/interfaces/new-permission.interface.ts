@@ -5,6 +5,7 @@ import { PermissionLevel } from '../../../config/types';
  */
 export interface INewPermission {
   permission_id: number;
+  name: string;
   read: PermissionLevel;
   write: PermissionLevel;
   execute: PermissionLevel;

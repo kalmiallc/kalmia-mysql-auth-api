@@ -192,6 +192,7 @@ export class Role extends BaseModel {
           rp.read,
           rp.write,
           rp.execute,
+          rp.name as rpName,
           rp.status as rpStatus,
           rp._createTime as rpCreateTime,
           rp._updateTime as rpUpdateTime,
@@ -213,6 +214,7 @@ export class Role extends BaseModel {
         GROUP BY
           ${this.getSelectColumns('r')},
           r.name,
+          rp.name,
           rp.role_id,
           rp.permission_id,
           rp.read,
@@ -246,11 +248,12 @@ export class Role extends BaseModel {
       if (!permission) {
         permission = new RolePermission({}).populate({
           ...row,
-          ...row?.rpStatus ? { status: row.rpStatus } : {},
-          ...row?.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null },
-          ...row?.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null },
-          ...row?.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null },
-          ...row?.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
+          ...row.rpName ? { name: row.rpName } : { name: null },
+          ...row.rpStatus ? { status: row.rpStatus } : { status: null },
+          ...row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null },
+          ...row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null },
+          ...row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null },
+          ...row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
           id: null
         }, PopulateFor.DB);
 
