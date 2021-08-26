@@ -269,9 +269,6 @@ export class Auth {
     }
 
     await user.getRoles();
-
-    console.log(JSON.stringify(user, null, 2));
-
     return {
       status: true,
       data: user.roles,

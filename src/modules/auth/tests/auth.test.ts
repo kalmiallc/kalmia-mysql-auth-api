@@ -130,14 +130,13 @@ describe('Auth', () => {
     );
   });
 
-  it.only('Get user\'s roles', async () => {
+  it('Get user\'s roles', async () => {
     const user = await insertAuthUser();
     const roleStr = faker.lorem.words(3)
     const role = await insertRoleWithPermissions(
       roleStr,
       [{ permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }]
     );
-    console.log(JSON.stringify(role, null, 2))
 
     const auth = Auth.getInstance();
     await auth.grantRoles([roleStr], user.id);

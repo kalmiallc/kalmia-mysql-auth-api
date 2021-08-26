@@ -379,7 +379,11 @@ export class AuthUser extends BaseModel {
       `
       SELECT 
         r.*, 
-        rp.*,
+        rp.role_id,
+        rp.permission_id,
+        rp.read,
+        rp.write,
+        rp.execute,
         rp.name as rpName,
         rp.status as rpStatus,
         rp._createTime as rpCreateTime,
