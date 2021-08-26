@@ -182,7 +182,7 @@ export class Token extends BaseModel {
    * @returns boolean, whether the operation was successful or not.
    */
   public async invalidateToken(): Promise<boolean> {
-    const sqlUtil = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
+    const sqlUtil = new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
     const conn = await sqlUtil.start();
 
     try {

@@ -330,16 +330,16 @@ export class Auth {
    * @param token Token to be invalidated
    * @returns boolean, whether invalidation was successful
    */
-  async invalidateToken(token: string): Promise<IAuthResponse<boolean>> {
-    if (!token) {
+  async invalidateToken(tokenString: string): Promise<IAuthResponse<boolean>> {
+    if (!tokenString) {
       return {
         status: false,
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
       };
     }
 
-    const tokenObj = await new Token({}).populateByToken(token);
-    const invalidation = await tokenObj.invalidateToken();
+    const token = await new Token({}).populateByToken(tokenString);
+    const invalidation = await token.invalidateToken();
     if (invalidation) {
       return {
         status: true,

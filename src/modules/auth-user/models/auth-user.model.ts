@@ -382,9 +382,9 @@ export class AuthUser extends BaseModel {
         rp.*
       FROM ${AuthDbTables.ROLES} r
       JOIN ${AuthDbTables.USER_ROLES} ur
-      ON ur.role_id = r.id
+        ON ur.role_id = r.id
       JOIN ${AuthDbTables.ROLE_PERMISSIONS} rp
-      ON rp.role_id = r.id
+        ON rp.role_id = r.id
       WHERE ur.user_id = @userId
         AND r.status < ${DbModelStatus.DELETED}
       ORDER BY r.id;

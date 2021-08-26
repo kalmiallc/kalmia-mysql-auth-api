@@ -2,16 +2,19 @@
 import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
-import { BaseModel, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { BaseModel, DbModelStatus, getQueryParams, MySqlConnManager, MySqlUtil, PopulateFor, selectAndCountQuery, SerializeFor } from 'kalmia-sql-lib';
 import { Pool, PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 import { RolePermission } from './role-permission.model';
 
 /**
- * Role model
+ * Role model.
  */
 export class Role extends BaseModel {
+  /**
+   * Roles table.
+   */
   tableName: AuthDbTables = AuthDbTables.ROLES;
 
   /**
@@ -27,7 +30,6 @@ export class Role extends BaseModel {
       SerializeFor.PROFILE,
       SerializeFor.ADMIN,
     ],
-    validators: [],
   })
   public id: number;
 
@@ -67,7 +69,8 @@ export class Role extends BaseModel {
       SerializeFor.PROFILE,
       SerializeFor.ADMIN
     ],
-    defaultValue: () => []
+    defaultValue: () => [],
+    emptyValue: () => []
   })
   public rolePermissions: RolePermission[];
 
@@ -87,10 +90,11 @@ export class Role extends BaseModel {
 
   /**
    * Populates role's role permissions.
-   * @param conn (optional) database connection
-   * @returns same instance with freshly populated role permissions
+   * 
+   * @param conn (optional) database connection.
+   * @returns Same instance with freshly populated role permissions.
    */
-  public async getRolePermissions(conn?: PoolConnection): Promise<Role> {
+  public async getRolePermissions(conn?: PoolConnection): Promise<this> {
     this.rolePermissions = [];
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
@@ -116,11 +120,11 @@ export class Role extends BaseModel {
   }
 
   /**
-   * Populates model fields by name.
+   * Populates role fields by name.
    *
    * @param name Role's name.
    */
-  public async populateByName(name: string) {
+  public async populateByName(name: string): Promise<this> {
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
         SELECT * FROM ${this.tableName}
@@ -138,11 +142,11 @@ export class Role extends BaseModel {
   }
 
   /**
-   * Populates model fields by id.
+   * Populates role fields by id.
    *
    * @param id Role's id.
    */
-  public async populateById(id: any): Promise<any> {
+  public async populateById(id: any): Promise<this> {
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
       `
       SELECT * FROM ${this.tableName}
@@ -157,6 +161,112 @@ export class Role extends BaseModel {
     this.populate(res[0]);
     await this.getRolePermissions();
     return this;
+  }
+
+  /**
+   * Returns a list of roles based on the given filter.
+   *
+   * @param filter Object used for filtering.
+   * @returns List of filtered roles.
+   */
+  public async getList(filter: any): Promise<{ items: Role[]; total: number }> {
+    // Set default values or null for all params that we pass to sql query.
+    const defaultParams = {
+      id: null,
+      search: null,
+    };
+
+    // Map url query with sql fields.
+    const fieldMap = {
+      id: 'u.id'
+    };
+
+    const { params, filters } = getQueryParams(defaultParams, 'r', fieldMap, filter);
+    const sqlQuery = {
+      qSelect: `
+        SELECT
+          ${this.getSelectColumns('r')},
+          r.name,
+          rp.role_id,
+          rp.permission_id,
+          rp.read,
+          rp.write,
+          rp.execute,
+          rp.status as rpStatus,
+          rp._createTime as rpCreateTime,
+          rp._updateTime as rpUpdateTime,
+          rp._createUser as rpCreateUser,
+          rp._updateUser as rpUpdateUser
+        `,
+      qFrom: `
+        FROM \`${AuthDbTables.ROLES}\` r
+        LEFT JOIN \`${AuthDbTables.ROLE_PERMISSIONS}\` rp
+          ON r.id = rp.role_id
+        WHERE
+          (@id IS NULL OR r.id = @id)
+          AND (@search IS NULL
+            OR r.name LIKE CONCAT('%', @search, '%')
+          )
+          AND (r.status < ${DbModelStatus.DELETED})
+        `,
+      qGroup: `
+        GROUP BY
+          ${this.getSelectColumns('r')},
+          r.name,
+          rp.role_id,
+          rp.permission_id,
+          rp.read,
+          rp.write,
+          rp.execute,
+          rp.status,
+          rp._createTime,
+          rp._updateTime,
+          rp._createUser,
+          rp._updateUser
+        `,
+      qFilter: `
+        ORDER BY ${filters.orderStr}
+        LIMIT ${filters.limit} OFFSET ${filters.offset};
+      `
+    };
+
+    console.log([
+      sqlQuery.qSelect,
+      sqlQuery.qFrom,
+      sqlQuery.qGroup,
+      sqlQuery.qFilter
+    ].join('\n'));
+
+    const res = await selectAndCountQuery(new MySqlUtil(await this.db()), sqlQuery, params, 'r.id');
+    const rows = res.items;
+
+    let roles: Role[] = [];
+    for (const row of rows) {
+      let role = roles.find((r) => r.id === row.id);
+      if (!role) {
+        role = new Role().populate(row, PopulateFor.DB);
+        roles = [...roles, role];
+      }
+
+      let permission = role.rolePermissions.find((rp) => rp.permission_id === rp.permission_id);
+      if (!permission) {
+        permission = new RolePermission({}).populate({
+          ...row,
+          ...row?.rpStatus ? { status: row.rpStatus } : {},
+          ...row?.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null },
+          ...row?.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null },
+          ...row?.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null },
+          ...row?.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
+        }, PopulateFor.DB);
+
+        role.rolePermissions = [...role.rolePermissions, permission];
+      }
+    }
+
+    return {
+      items: roles,
+      total: res.total
+    };
   }
 
 }
