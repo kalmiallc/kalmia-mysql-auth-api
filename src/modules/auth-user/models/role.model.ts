@@ -230,12 +230,6 @@ export class Role extends BaseModel {
       `
     };
 
-    console.log([
-      sqlQuery.qSelect,
-      sqlQuery.qFrom,
-      sqlQuery.qGroup,
-      sqlQuery.qFilter
-    ].join('\n'));
 
     const res = await selectAndCountQuery(new MySqlUtil(await this.db()), sqlQuery, params, 'r.id');
     const rows = res.items;
@@ -259,7 +253,9 @@ export class Role extends BaseModel {
           ...row?.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
         }, PopulateFor.DB);
 
-        role.rolePermissions = [...role.rolePermissions, permission];
+        if (permission.exists()) {
+          role.rolePermissions = [...role.rolePermissions, permission];
+        }
       }
     }
 

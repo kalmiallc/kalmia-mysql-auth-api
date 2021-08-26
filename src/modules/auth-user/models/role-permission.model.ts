@@ -2,17 +2,17 @@
 import { integerParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
 import * as mysql from 'mysql2/promise';
-import { BaseModel, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { AuthDbTables, PermissionLevel, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 
 /**
- * Role permission model
+ * Role permission model.
  */
 export class RolePermission extends BaseModel {
   /**
-   * 
+   * Role permissions table.
    */
   tableName: AuthDbTables = AuthDbTables.ROLE_PERMISSIONS;
 
@@ -83,10 +83,8 @@ export class RolePermission extends BaseModel {
         code: AuthValidatorErrorCode.READ_PERMISSION_LEVEL_NOT_SET,
       },
     ],
-    fakeValue() {
-      return PermissionLevel.ALL; 
-    },
-    defaultValue: PermissionLevel.NONE
+    fakeValue: () => PermissionLevel.ALL,
+    defaultValue: () => PermissionLevel.NONE
   })
   public read: PermissionLevel;
 
@@ -112,7 +110,7 @@ export class RolePermission extends BaseModel {
       },
     ],
     fakeValue: () => PermissionLevel.ALL,
-    defaultValue: PermissionLevel.NONE
+    defaultValue: () => PermissionLevel.NONE
   })
   public write: PermissionLevel;
 
@@ -138,13 +136,21 @@ export class RolePermission extends BaseModel {
       },
     ],
     fakeValue: () => PermissionLevel.ALL,
-    defaultValue: PermissionLevel.NONE
+    defaultValue: () => PermissionLevel.NONE
   })
   public execute: PermissionLevel;
 
   public constructor(data: any) {
     super(data);
   }
+
+  /**
+   * Tells if the model represents a document stored in the database.
+   */
+  public exists(): boolean {
+    return !!this.role_id && !!this.permission_id && (this.status !== DbModelStatus.DELETED);
+  }
+
 
   /**
    * Tells whether a role permission meets or exceeds a certain permission requirement.
