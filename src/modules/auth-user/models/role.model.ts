@@ -242,7 +242,7 @@ export class Role extends BaseModel {
         roles = [...roles, role];
       }
 
-      let permission = role.rolePermissions.find((rp) => rp.permission_id === rp.permission_id);
+      let permission = role.rolePermissions.find((rp) => rp.permission_id === row.permission_id);
       if (!permission) {
         permission = new RolePermission({}).populate({
           ...row,
@@ -251,6 +251,7 @@ export class Role extends BaseModel {
           ...row?.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null },
           ...row?.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null },
           ...row?.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
+          id: null
         }, PopulateFor.DB);
 
         if (permission.exists()) {
