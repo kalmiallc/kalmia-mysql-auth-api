@@ -15,7 +15,9 @@
   },
   "files": [
     "dist/**/*",
-    "README.md"
+    "src/**/*",
+    "README.md",
+    "docs/**/*"
   ],
   "repository": {
     "type": "git",

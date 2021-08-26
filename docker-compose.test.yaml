@@ -15,6 +15,7 @@ services:
       - MYSQL_PORT_TEST=$MYSQL_PORT_TEST
       - MYSQL_HOST_TEST=mysqldb
       - MYSQL_USER_TEST=$MYSQL_USER_TEST
+      - LOG_TARGET=$LOG_TARGET
     depends_on:
       - mysqldb
   mysqldb:
