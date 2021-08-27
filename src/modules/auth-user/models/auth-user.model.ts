@@ -223,8 +223,8 @@ export class AuthUser extends BaseModel {
 
     this.populate(res[0]);
     if (populateRoles) {
-      await this.getRoles();
-      await this.getPermissions();
+      await this.populateRoles();
+      await this.populatePermissions();
     }
 
     return this;
@@ -250,8 +250,8 @@ export class AuthUser extends BaseModel {
 
     this.populate(res[0]);
     if (populateRoles) {
-      await this.getRoles();
-      await this.getPermissions();
+      await this.populateRoles();
+      await this.populatePermissions();
     }
 
     return this;
@@ -277,8 +277,8 @@ export class AuthUser extends BaseModel {
 
     this.populate(res[0]);
     if (populateRoles) {
-      await this.getRoles();
-      await this.getPermissions();
+      await this.populateRoles();
+      await this.populatePermissions();
     }
 
     return this;
@@ -296,8 +296,8 @@ export class AuthUser extends BaseModel {
     }
 
     if (populateRoles) {
-      await this.getRoles();
-      await this.getPermissions();
+      await this.populateRoles();
+      await this.populatePermissions();
     }
 
     return this;
@@ -310,7 +310,7 @@ export class AuthUser extends BaseModel {
    */
   public async hasPermissions(permissionPasses: PermissionPass[]): Promise<boolean> {
     if (!this.permissions || !this.permissions.length) {
-      await this.getPermissions();
+      await this.populatePermissions();
     }
 
     for (const pass of permissionPasses) {
@@ -334,7 +334,7 @@ export class AuthUser extends BaseModel {
    *
    * @param roleId Role's id.
    */
-  public async addRole(roleId: number, conn?: PoolConnection): Promise<AuthUser> {
+  public async addRole(roleId: number, conn?: PoolConnection, populateRoles: boolean = true): Promise<AuthUser> {
     await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
       INSERT IGNORE INTO ${AuthDbTables.USER_ROLES} (user_id, role_id)
@@ -344,7 +344,10 @@ export class AuthUser extends BaseModel {
       conn
     );
 
-    return await this.getRoles(conn);
+    if (populateRoles) {
+      await this.populateRoles(conn);
+    }
+    return this;
   }
 
   /**
@@ -354,7 +357,7 @@ export class AuthUser extends BaseModel {
    */
   public async hasRole(roleId: number, conn?: PoolConnection): Promise<boolean> {
     if (!this.roles || !this.roles.length) {
-      await this.getRoles(conn);
+      await this.populateRoles(conn);
     }
 
     for (const r of this.roles) {
@@ -370,7 +373,7 @@ export class AuthUser extends BaseModel {
    * @param conn (optional) database connection
    * @returns the same instance of the object, but with the roles freshly populated.
    */
-  public async getRoles(conn?: PoolConnection): Promise<AuthUser> {
+  public async populateRoles(conn?: PoolConnection): Promise<AuthUser> {
     this.roles = [];
     const rows = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `
@@ -436,7 +439,7 @@ export class AuthUser extends BaseModel {
    * @param conn (optional) database connection
    * @returns same instance of user, but with permissions freshly populated
    */
-  public async getPermissions(conn?: PoolConnection): Promise<AuthUser> {
+  public async populatePermissions(conn?: PoolConnection): Promise<AuthUser> {
     this.permissions = [];
     const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `

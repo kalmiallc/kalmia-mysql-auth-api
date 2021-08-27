@@ -136,20 +136,21 @@ export class Role extends BaseModel {
    *
    * @param id Role's id.
    */
-  public async populateById(id: any): Promise<this> {
-    const res = await new MySqlUtil(await this.db()).paramQuery(
+  public async populateById(id: any, conn?: PoolConnection): Promise<this> {
+    const res = await new MySqlUtil(await this.db()).paramExecute(
       `
       SELECT * FROM ${this.tableName}
       WHERE id = @id
     `,
-      { id }
+      { id },
+      conn
     );
 
     if (!res.length) {
       return this.reset();
     }
     this.populate(res[0]);
-    await this.getRolePermissions();
+    await this.getRolePermissions(conn);
     return this;
   }
 

@@ -93,10 +93,9 @@ describe('Auth', () => {
     );
   });
 
-  it('Add role to user', async () => {
+  it('Should add role to user', async () => {
     const user = await insertAuthUser();
-    const roleStr = faker.lorem.words(3);
-    const role = await insertRoleWithPermissions(roleStr, [
+    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
       {
         permission_id: 1,
         name: faker.lorem.words(1),
@@ -106,7 +105,7 @@ describe('Auth', () => {
       }
     ]);
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleStr], user.id);
+    await auth.grantRoles([role.id], user.id);
     const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
     );
@@ -120,15 +119,14 @@ describe('Auth', () => {
     );
   });
 
-  it("Get user's roles", async () => {
+  it("Should get user's roles", async () => {
     const user = await insertAuthUser();
-    const roleStr = faker.lorem.words(3);
-    const role = await insertRoleWithPermissions(roleStr, [
+    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
 
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleStr], user.id);
+    await auth.grantRoles([role.id], user.id);
     const roles = await auth.getAuthUserRoles(user.id);
 
     expect(roles.data?.length).toBe(1);
@@ -136,59 +134,51 @@ describe('Auth', () => {
       expect.objectContaining({
         data: expect.arrayContaining([
           expect.objectContaining({
-            name: roleStr
+            name: role.name
           })
         ])
       })
     );
   });
 
-  it("Revoke user's roles and ignore those he doesn't have", async () => {
+  it("Should revoke user's roles and ignore those he doesn't have", async () => {
     const user = await insertAuthUser();
-    const roleStr = faker.lorem.words(3);
-    const role = await insertRoleWithPermissions(roleStr, [
+    const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
-    const roleStrTwo = faker.lorem.words(3);
-    const role2 = await insertRoleWithPermissions(roleStrTwo, [
+    const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 3, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleStr], user.id);
+    await auth.grantRoles([role1.id], user.id);
 
     const roles = await auth.getAuthUserRoles(user.id);
-
     expect(roles.data?.length).toBe(1);
 
-    await auth.revokeRoles([roleStr, roleStrTwo], user.id);
-
+    await auth.revokeRoles([role1.name, role2.name], user.id);
     const roles2 = await auth.getAuthUserRoles(user.id);
-
     expect(roles2.data.length).toBe(0);
   });
 
-  it("Revoke user's roles and leave the ones not being removed", async () => {
+  it("Should revoke user's roles and leave the ones not being removed", async () => {
     const user = await insertAuthUser();
-    const roleStr = faker.lorem.words(3);
-    const role = await insertRoleWithPermissions(roleStr, [
+    const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
-    const roleStrTwo = faker.lorem.words(3);
-    const role2 = await insertRoleWithPermissions(roleStrTwo, [
+    const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 4, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
-    const roleStrThree = faker.lorem.words(3);
-    const role3 = await insertRoleWithPermissions(roleStrThree, [
+    const role3 = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 5, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleStr, roleStrThree], user.id);
+    await auth.grantRoles([role1.id, role3.id], user.id);
 
     const roles = await auth.getAuthUserRoles(user.id);
 
     expect(roles.data?.length).toBe(2);
 
-    await auth.revokeRoles([roleStr, roleStrTwo], user.id);
+    await auth.revokeRoles([role1.name, role2.name], user.id);
 
     const roles2 = await auth.getAuthUserRoles(user.id);
 
@@ -197,33 +187,29 @@ describe('Auth', () => {
       expect.objectContaining({
         data: expect.arrayContaining([
           expect.objectContaining({
-            name: roleStrThree
+            name: role3.name
           })
         ])
       })
     );
   });
 
-  it('Get user permissions', async () => {
+  it('Should get user permissions', async () => {
     const user = await insertAuthUser();
-    const roleStrThree = faker.lorem.words(3);
-    const role3 = await insertRoleWithPermissions(roleStrThree, [
+    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 5, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
-    const roleStr = faker.lorem.words(3);
-    const role = await insertRoleWithPermissions(roleStr, [
+    const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
-    const roleStrFour = faker.lorem.words(3);
-    const role4 = await insertRoleWithPermissions(roleStrFour, [
+    await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 6, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
-    const roleStrTwo = faker.lorem.words(3);
-    const role2 = await insertRoleWithPermissions(roleStrTwo, [
+    await insertRoleWithPermissions(faker.lorem.words(3), [
       { permission_id: 4, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleStr, roleStrThree], user.id);
+    await auth.grantRoles([role.id, role1.id], user.id);
 
     const permissions = await auth.getAuthUserPermissions(user.id);
 
@@ -1205,20 +1191,18 @@ describe('Auth', () => {
   it('Query should join permission actions', async () => {
     const user = await insertAuthUser();
 
-    const roleOne = faker.address.city();
-    await insertRoleWithPermissions(roleOne, [
+    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
 
-    const roleTwo = faker.address.city();
-    await insertRoleWithPermissions(roleTwo, [
+    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.OWN },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
     ]);
 
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne, roleTwo], user.id);
+    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
     const permissions = await auth.getAuthUserPermissions(user.id);
 
@@ -1235,20 +1219,18 @@ describe('Auth', () => {
   it('Check if user can access - OK 1', async () => {
     const user = await insertAuthUser();
 
-    const roleOne = faker.address.city();
-    await insertRoleWithPermissions(roleOne, [
+    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
 
-    const roleTwo = faker.address.city();
-    await insertRoleWithPermissions(roleTwo, [
+    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.OWN },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
     ]);
 
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne, roleTwo], user.id);
+    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
     const canAccess = await auth.canAccess(user.id, [
       {
@@ -1274,20 +1256,18 @@ describe('Auth', () => {
   it('Check if user can access - OK 2', async () => {
     const user = await insertAuthUser();
 
-    const roleOne = faker.address.city();
-    await insertRoleWithPermissions(roleOne, [
+    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
 
-    const roleTwo = faker.address.city();
-    await insertRoleWithPermissions(roleTwo, [
+    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
     ]);
 
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne, roleTwo], user.id);
+    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
     const canAccess = await auth.canAccess(user.id, [
       {
@@ -1313,20 +1293,18 @@ describe('Auth', () => {
   it('Check if user can access - OK 3', async () => {
     const user = await insertAuthUser();
 
-    const roleOne = faker.address.city();
-    await insertRoleWithPermissions(roleOne, [
+    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
 
-    const roleTwo = faker.address.city();
-    await insertRoleWithPermissions(roleTwo, [
+    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
     ]);
 
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne, roleTwo], user.id);
+    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
     const canAccess = await auth.canAccess(user.id, [
       {
@@ -1347,20 +1325,18 @@ describe('Auth', () => {
   it('Check if user can access - NOK', async () => {
     const user = await insertAuthUser();
 
-    const roleOne = faker.address.city();
-    await insertRoleWithPermissions(roleOne, [
+    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
 
-    const roleTwo = faker.address.city();
-    await insertRoleWithPermissions(roleTwo, [
+    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
       { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
     ]);
 
     const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne, roleTwo], user.id);
+    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
     const canAccess = await auth.canAccess(user.id, [
       {
@@ -1710,7 +1686,7 @@ describe('Auth', () => {
       const role = await insertRoleWithPermissions(faker.lorem.words(3), [
         { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
       ]);
-      await auth.grantRoles([role.name], user.id);
+      await auth.grantRoles([role.id], user.id);
 
       const token = await auth.loginPin(user.PIN, [role.id]);
       const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
@@ -1751,7 +1727,7 @@ describe('Auth', () => {
       const role = await insertRoleWithPermissions(faker.lorem.words(3), [
         { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
       ]);
-      await auth.grantRoles([role.name], user.id);
+      await auth.grantRoles([role.id], user.id);
 
       const token = await auth.loginPin('2345', [role.id]);
       const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(

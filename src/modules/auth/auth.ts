@@ -78,12 +78,12 @@ export class Auth {
   }
 
   /**
-   * Grants roles to user. Roles must exist before being granted.
-   * @param roles Array of role names to add to user.
-   * @param userId Id of the user the roles should be granted to
-   * @returns updated user roles
+   * Add chosen roles to the user.
+   * @param roleIds List of role IDs.
+   * @param userId User's ID.
+   * @returns Updated user.
    */
-  async grantRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
+  async grantRoles(roleIds: number[], userId: number): Promise<IAuthResponse<AuthUser>> {
     const user = await new AuthUser().populateById(userId);
     if (!user.exists()) {
       return {
@@ -92,23 +92,39 @@ export class Auth {
       };
     }
 
-    const queryGet = `
-      SELECT id
-      FROM ${AuthDbTables.ROLES}
-      WHERE name IN (${roles.map((role) => `"${role}"`).join(', ')})
-    `;
-    const roleIds = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(queryGet);
+    const sql = new MySqlUtil(await MySqlConnManager.getInstance().getConnection());
+    const conn = await sql.start();
+    try {
+      for (const roleId of roleIds) {
+        const role = await new Role().populateById(roleId, conn);
+        if (!role.exists()) {
+          await sql.rollback(conn);
 
-    const roleAwaits = [];
-    for (const role of roleIds) {
-      roleAwaits.push(user.addRole(role.id));
+          return {
+            status: false,
+            errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
+          };
+        }
+        await user.addRole(role.id, conn, false);
+      }
+
+      // TODO: Check if user already has this role?
+
+      await user.populateRoles(conn);
+      await sql.commit(conn);
+    } catch (error) {
+      await sql.rollback(conn);
+
+      return {
+        status: false,
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error
+      };
     }
-    await Promise.all(roleAwaits);
-    await user.getRoles();
 
     return {
       status: true,
-      data: user.roles
+      data: user
     };
   }
 
@@ -119,18 +135,11 @@ export class Auth {
    * @returns updated user roles
    */
   async revokeRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
-    if (!userId) {
-      return {
-        status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
-      };
-    }
-
     const user = await new AuthUser().populateById(userId);
-    if (!user.id) {
+    if (!user.exists()) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
     }
 
@@ -143,7 +152,7 @@ export class Auth {
         AND ur.user_id = @userId
     `;
     await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { userId });
-    await user.getRoles();
+    await user.populateRoles();
 
     return {
       status: true,
@@ -165,7 +174,7 @@ export class Auth {
       };
     }
 
-    await user.getRoles();
+    await user.populateRoles();
     return {
       status: true,
       data: user.roles
@@ -193,7 +202,7 @@ export class Auth {
       };
     }
 
-    await user.getPermissions();
+    await user.populatePermissions();
     return {
       status: true,
       data: user.permissions

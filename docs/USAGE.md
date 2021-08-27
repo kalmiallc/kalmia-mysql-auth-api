@@ -13,7 +13,7 @@ await auth.createRole('Commenter');
 ```typescript
 const auth = new Auth();
 
-await auth.addPermissionsToRole('Commenter', [ {
+await auth.addPermissionsToRole(1, [ {
   permission_id: Permission.TRANSPORT,
   read: PermissionLevel.OWN,
   write: PermissionLevel.NONE,
@@ -26,7 +26,7 @@ do note that the permissions and role must already exist for this to work. Avail
 ```typescript
 const auth = new Auth();
 
-await auth.removePermissionsFromRole('Commenter', [Permission.TRANSPORT]);
+await auth.removePermissionsFromRole(1, [Permission.TRANSPORT]);
 ```
 do note that you should provide at least 1 valid, existing and present permission in the array, else the function returns `false`, indicating a failure.
 
@@ -35,12 +35,9 @@ do note that you should provide at least 1 valid, existing and present permissio
 ```typescript
 const auth = new Auth();
 
-await auth.grantRoles(["Commenter", "Gardener"]);
-// or
-await auth.grantRoles(["Mayor", "Director"], userId);
+await auth.grantRoles([1, 2], userId); // 1 & 2 are role IDs
 ```
-where `userId` is the ID of the user you wish to provide the roles to.
-If no ID is provided to the function, it attempts to use the user attached to the context, provided there is one. Keep in mind the roles need to exist for them to be grantable to the user.
+where `userId` is the ID of the user you wish to provide the roles to. Keep in mind the roles need to exist for them to be grantable to the user.
 
 
 ### Example of checking whether a user has access to a resource:
