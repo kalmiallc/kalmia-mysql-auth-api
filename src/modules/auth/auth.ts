@@ -1,7 +1,6 @@
-import { DbModelStatus, MySqlConnManager, MySqlUtil, selectAndCountQuery } from 'kalmia-sql-lib';
+import { MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
 import { AuthUser } from '../..';
-import { env } from '../../config/env';
 import {
   AuthAuthenticationErrorCode,
   AuthDbTables,
@@ -39,110 +38,23 @@ export class Auth {
   }
 
   /**
-   * Return array of auth users.
-   * @param filter Pagination parameters. Can contain limit, offset and orderArr (array of properties to order by)
-   * @param params Parameters to search by (id, search, status, role)
-   * @returns list of auth user data objects.
-   */
-  async getAuthUsers(filter: any, params: any): Promise<IAuthResponse<any[]>> {
-    const mysqlUtil = new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
-    // set default values or null for all params that we pass to sql query
-    const defaultParams = {
-      id: null,
-      search: null,
-      status: null,
-      role: null,
-      isAdmin: null
-    };
-
-    for (const key of Object.keys(defaultParams)) {
-      if (!params[key]) {
-        params[key] = defaultParams[key];
-      }
-    }
-    if (filter.limit === -1) {
-      filter.limit = 500;
-    }
-    // params['isAdmin'] = overrideAdmin || this.getContext().hasUserRole(DefaultUserRoles.ADMIN) ? 1 : 0;
-
-    // if (parseInt(urlQuery.search)) {
-    //   params.id = parseInt(urlQuery.search);
-    //   params.search = null;
-    // }
-
-    const sqlQuery = {
-      qSelect: `
-        SELECT
-          u.id, u.username, u.email, u.status, u.PIN,
-          GROUP_CONCAT(r.name) as userRoles,
-          IF(CHAR_LENGTH(u.passwordHash) > 15, 'true', 'false') hasPW,
-          u._createTime,
-          u._updateTime
-        `,
-      qFrom: `
-        FROM ${AuthDbTables.USERS} u
-        LEFT JOIN ${AuthDbTables.USER_ROLES} ur
-          ON ur.user_id = u.id
-        LEFT JOIN ${AuthDbTables.ROLES} r
-          ON r.id = ur.role_id
-            AND r.status < ${DbModelStatus.DELETED}
-        WHERE
-          (@id IS NULL OR u.id = @id)
-          AND (@role IS NULL OR FIND_IN_SET(ur.role_id, @role))
-          AND (@search IS NULL
-            OR u.email LIKE CONCAT('%', @search, '%')
-            OR u.username LIKE CONCAT('%', @search, '%')
-            OR CAST(u.id as CHAR) LIKE CONCAT('%', @search, '%')
-          )
-          AND (
-            (@status IS NULL AND (u.status < ${DbModelStatus.DELETED} OR @id IS NOT NULL OR @isAdmin = 1))
-            OR (@status IS NOT NULL AND FIND_IN_SET(u.status, @status))
-          )
-        `,
-      qGroup: `
-        GROUP BY
-          u.id, u.username, u.email, u.status, u.pin, u._createTime, u._updateTime,
-          hasPW
-        `,
-      qFilter: `
-        ORDER BY ${`${(filter.orderArr || ['u.id']).join(', ') || null}`}
-          LIMIT ${filter.limit || env.ITEMS_PER_PAGE || 10} OFFSET ${filter.offset || 0};
-      `
-    };
-    try {
-      const res = await selectAndCountQuery(mysqlUtil, sqlQuery, params, 'u.id');
-      return {
-        data: res.items,
-        status: true,
-      };
-    } catch (error) {
-      return {
-        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-        status: false,
-        details: error,
-      };
-    }
-  }
-
-  /**
    * Gets auth user by user id.
    * @param userId if of user to search by
    * @returns AuthUser with matching id
    */
   async getAuthUserById(userId: number): Promise<IAuthResponse<AuthUser>> {
     const user = await new AuthUser().populateById(userId);
-
-    if (user.exists()) {
-      return {
-        status: true,
-        data: user,
-      };
-    } else {
+    if (!user.exists()) {
       return {
         status: false,
-        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS],
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
-    }    
+    }
+
+    return {
+      status: true,
+      data: user
+    };
   }
 
   /**
@@ -152,18 +64,17 @@ export class Auth {
    */
   async getAuthUserByEmail(email: string): Promise<IAuthResponse<AuthUser>> {
     const user = await new AuthUser().populateByEmail(email);
-
-    if (user.exists()) {
-      return {
-        status: true,
-        data: user,
-      };
-    } else {
+    if (!user.exists()) {
       return {
         status: false,
         errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
-    }    
+    }
+
+    return {
+      status: true,
+      data: user
+    };
   }
 
   /**
@@ -173,18 +84,11 @@ export class Auth {
    * @returns updated user roles
    */
   async grantRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
-    if (!userId) {
-      return {
-        status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
-      };
-    }
-
     const user = await new AuthUser().populateById(userId);
-    if (!user.id) {
+    if (!user.exists()) {
       return {
         status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
       };
     }
 
@@ -201,10 +105,10 @@ export class Auth {
     }
     await Promise.all(roleAwaits);
     await user.getRoles();
-    
+
     return {
       status: true,
-      data: user.roles,
+      data: user.roles
     };
   }
 
@@ -240,10 +144,10 @@ export class Auth {
     `;
     await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { userId });
     await user.getRoles();
-    
+
     return {
       status: true,
-      data: user.roles,
+      data: user.roles
     };
   }
 
@@ -253,13 +157,6 @@ export class Auth {
    * @returns array of user roles
    */
   async getAuthUserRoles(userId: number): Promise<IAuthResponse<Role[]>> {
-    if (!userId) {
-      return {
-        status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
-      };
-    }
-
     const user = await new AuthUser().populateById(userId);
     if (!user.exists()) {
       return {
@@ -271,7 +168,7 @@ export class Auth {
     await user.getRoles();
     return {
       status: true,
-      data: user.roles,
+      data: user.roles
     };
   }
 
@@ -299,7 +196,7 @@ export class Auth {
     await user.getPermissions();
     return {
       status: true,
-      data: user.permissions,
+      data: user.permissions
     };
   }
 
@@ -312,23 +209,23 @@ export class Auth {
    * @returns JWT
    */
   async generateToken(data: any, subject: string, userId?: number, exp?: any): Promise<IAuthResponse<string>> {
-    const tokenObj = new Token({
+    const token = new Token({
       payload: data,
       subject,
       user_id: userId
     });
 
-    const token = await tokenObj.generate(exp);
-    if (token) {
+    const tokenString = await token.generate(exp);
+    if (tokenString) {
       return {
         status: true,
-        data: token,
+        data: tokenString
       };
     }
 
     return {
       status: false,
-      errors: [AuthBadRequestErrorCode.DEFAULT_BAD_REQUEST_ERROR] 
+      errors: [AuthBadRequestErrorCode.DEFAULT_BAD_REQUEST_ERROR]
     };
   }
 
@@ -350,7 +247,7 @@ export class Auth {
     if (invalidation) {
       return {
         status: true,
-        data: invalidation,
+        data: invalidation
       };
     }
 
@@ -367,17 +264,9 @@ export class Auth {
    * @param userId User's ID - if present the ownership of the token will also be validated.
    * @returns token payload
    */
-  async validateToken(token: string, subject: string, userId: any = null): Promise<IAuthResponse<any>> {
-    if (!token) {
-      return {
-        status: false,
-        errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
-      };
-    }
-
-    const tokenObj = new Token({ token, subject });
-    const validation = await tokenObj.validateToken(userId);
-
+  async validateToken(tokenString: string, subject: string, userId: any = null): Promise<IAuthResponse<any>> {
+    const token = new Token({ token: tokenString, subject });
+    const validation = await token.validateToken(userId);
     if (!validation) {
       return {
         status: false,
@@ -387,26 +276,26 @@ export class Auth {
 
     return {
       status: true,
-      data: validation,
+      data: validation
     };
   }
 
   /**
    * Refreshes provided token if it is valid.
-   * @param token token to be refreshed
-   * @returns new, refreshed token
+   * @param tokenString Token to be refreshed.
+   * @returns Refreshed token.
    */
-  async refreshToken(token: string): Promise<IAuthResponse<string>> {
-    if (!token) {
+  async refreshToken(tokenString: string): Promise<IAuthResponse<string>> {
+    if (!tokenString) {
       return {
         status: false,
         errors: [AuthBadRequestErrorCode.MISSING_DATA_ERROR]
       };
     }
 
-    const tokenObj = new Token({ token });
-    const refresh = await tokenObj.refresh();
-    if (!refresh) {
+    const token = new Token({ token: tokenString });
+    const refreshedToken = await token.refresh();
+    if (!refreshedToken) {
       return {
         status: false,
         errors: [AuthAuthenticationErrorCode.INVALID_TOKEN]
@@ -415,7 +304,7 @@ export class Auth {
 
     return {
       status: true,
-      data: refresh,
+      data: refreshedToken
     };
   }
 
@@ -449,7 +338,7 @@ export class Auth {
     } else {
       return {
         status: false,
-        errors: role.collectErrors().map(x => x.code)
+        errors: role.collectErrors().map((x) => x.code)
       };
     }
   }
@@ -502,93 +391,89 @@ export class Auth {
   }
 
   /**
-   * Adds role permissions to a role. A permission is only granted if role_id and permission_id combination doesn't already exist in database.
-   * @param role name of the role permissions will be granted to.
-   * @param permissions array of permissions to be granted.
-   * @returns updated role permissions of the role
+   * Adds role permissions to a role.
+   * @param roleId Role's ID.
+   * @param permissions Array of permission to be granted.
+   * @returns Role with updated permissions.
    */
-  async addPermissionsToRole(role: string, permissions: INewPermission[]): Promise<IAuthResponse<RolePermission[]>> {
+  async addPermissionsToRole(roleId: number, permissions: INewPermission[]): Promise<IAuthResponse<Role>> {
+    const role = await new Role().populateById(roleId);
+    if (!role.exists()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
+      };
+    }
+
+    const sql = new MySqlUtil(await MySqlConnManager.getInstance().getConnection());
+    const conn = await sql.start();
+    const rolePermissions: RolePermission[] = [];
     try {
-      const roleId = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-        `
-        SELECT id
-        FROM ${AuthDbTables.ROLES}
-        WHERE name = @role
-      `,
-        { role }
-      );
-
-      if (!roleId.length) {
-        return {
-          status: false,
-          errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
-        };
-      }
-
       for (const permission of permissions) {
-        const rolePerm = new RolePermission({
-          role_id: roleId[0].id,
-        }).populate(permission);
+        const rolePermission = new RolePermission({ role_id: role.id }).populate(permission);
 
-        if (!await rolePerm.existsInDb()) {
-          await rolePerm.create();
+        if (!(await rolePermission.existsInDb())) {
+          await rolePermission.create({ conn });
+          rolePermissions.push(rolePermission);
+        } else {
+          await sql.rollback(conn);
+
+          return {
+            status: false,
+            errors: [AuthBadRequestErrorCode.ROLE_PERMISSION_ALREADY_EXISTS]
+          };
         }
       }
+
+      await sql.commit(conn);
+      role.rolePermissions = [...role.rolePermissions, ...rolePermissions];
     } catch (error) {
+      await sql.rollback(conn);
+
       return {
         status: false,
         errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-        details: error,
+        details: error
       };
     }
-  
-    const roleObj = await new Role().populateByName(role);
+
     return {
       status: true,
-      data: roleObj.rolePermissions,
+      data: role
     };
   }
 
   /**
-   * Removes role permissions from a role.
-   * @param role Name of the role permissions should be removed from.
-   * @param permissions ids of permissions to be removed from the role.
-   * @returns updated role permissions
+   * Removes given permission from the role.
+   * @param roleId Role's ID.
+   * @param permissionIds List of permission IDs.
+   * @returns Updated role.
    */
-  async removePermissionsFromRole(role: string, permissions: number[]): Promise<IAuthResponse<RolePermission[]>> {
-    try {
-      const roleId = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-        `
-        SELECT id
-        FROM ${AuthDbTables.ROLES}
-        WHERE name = @role
-      `,
-        { role }
-      );
+  async removePermissionsFromRole(roleId: number, permissionIds: number[]): Promise<IAuthResponse<Role>> {
+    const role = await new Role().populateById(roleId);
+    if (!role.exists()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
+      };
+    }
 
-      if (!roleId.length) {
-        return {
-          status: false,
-          errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
-        };
-      }
-
-      const query = `
-          DELETE rp
-          FROM ${AuthDbTables.ROLE_PERMISSIONS} rp
-          WHERE rp.role_id = @roleId AND
-            rp.permission_id IN (${permissions.join(', ')})
-        `;
-
-      const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, {
-        roleId: roleId[0].id
+    for (const permissionId of permissionIds) {
+      const rolePermission = new RolePermission({
+        role_id: role.id,
+        permission_id: permissionId
       });
 
-      const roleObj = await new Role().populateByName(role);
-      return {
-        status: true,
-        data: roleObj.rolePermissions,
-      };
+      if (!(await rolePermission.existsInDb())) {
+        return {
+          status: false,
+          errors: [AuthResourceNotFoundErrorCode.ROLE_PERMISSION_DOES_NOT_EXISTS]
+        };
+      }
+    }
+
+    try {
+      await role.deleteRolePermissions(permissionIds);
     } catch (error) {
       return {
         status: false,
@@ -596,18 +481,30 @@ export class Auth {
         details: error
       };
     }
+
+    return {
+      status: true,
+      data: role
+    };
   }
 
   /**
-   * Return role's role permissions
-   * @param role name of the role to get permissions of
-   * @returns role's role permissions
+   * Return role's permissions.
+   * @param roleId Role ID.
+   * @returns List of role's permissions.
    */
-  async getRolePermissions(role: string): Promise<IAuthResponse<RolePermission[]>> {
-    const roleObj = await new Role().populateByName(role);
+  async getRolePermissions(roleId: number): Promise<IAuthResponse<RolePermission[]>> {
+    const role = await new Role().populateById(roleId);
+    if (!role.exists()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
+      };
+    }
+
     return {
       status: true,
-      data: roleObj.rolePermissions,
+      data: role.rolePermissions
     };
   }
 
@@ -671,7 +568,7 @@ export class Auth {
    */
   async loginPin(pin: string, allowedRoleIds: number[]): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByPin(pin);
-  
+
     if (!user.exists()) {
       return {
         status: false,
@@ -698,8 +595,6 @@ export class Auth {
     return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
   }
 
-
-
   /**
    * Creates auth user with provided data
    * @param data auth user data
@@ -724,7 +619,7 @@ export class Auth {
         return {
           status: false,
           errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-          details: error,
+          details: error
         };
       }
 
@@ -735,7 +630,7 @@ export class Auth {
     } else {
       return {
         status: false,
-        errors: user.collectErrors().map(x => x.code)
+        errors: user.collectErrors().map((x) => x.code)
       };
     }
   }
@@ -749,7 +644,7 @@ export class Auth {
     try {
       const user = await new AuthUser().populateById(userId);
       await user.delete();
-      
+
       return {
         status: true,
         data: user
@@ -758,7 +653,7 @@ export class Auth {
       return {
         status: false,
         errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-        details: error,
+        details: error
       };
     }
   }
@@ -783,8 +678,8 @@ export class Auth {
    * @param userId User's ID
    * @param password User's current password.
    * @param newPassword User's new password.
-   * @param force 
-   * @returns 
+   * @param force
+   * @returns
    */
   async changePassword(userId: any, password: string, newPassword: string, force: boolean = false): Promise<IAuthResponse<AuthUser>> {
     if (!userId || !newPassword || (!force && !password)) {
@@ -802,7 +697,7 @@ export class Auth {
       };
     }
 
-    if (force || await authUser.comparePassword(password)) {
+    if (force || (await authUser.comparePassword(password))) {
       authUser.setPassword(newPassword);
       try {
         await authUser.validate();
@@ -813,7 +708,7 @@ export class Auth {
       if (!authUser.isValid()) {
         return {
           status: false,
-          errors: authUser.collectErrors().map(x => x.code)
+          errors: authUser.collectErrors().map((x) => x.code)
         };
       } else {
         try {
@@ -822,7 +717,7 @@ export class Auth {
           return {
             status: false,
             errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-            details: error,
+            details: error
           };
         }
 
@@ -831,7 +726,6 @@ export class Auth {
           data: authUser
         };
       }
-
     } else {
       return {
         status: false,
@@ -872,7 +766,7 @@ export class Auth {
     if (!authUser.isValid()) {
       return {
         status: false,
-        errors: authUser.collectErrors().map(x => x.code)
+        errors: authUser.collectErrors().map((x) => x.code)
       };
     } else {
       try {
@@ -881,7 +775,7 @@ export class Auth {
         return {
           status: false,
           errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-          details: error,
+          details: error
         };
       }
 
@@ -924,7 +818,7 @@ export class Auth {
     if (!authUser.isValid()) {
       return {
         status: false,
-        errors: authUser.collectErrors().map(x => x.code)
+        errors: authUser.collectErrors().map((x) => x.code)
       };
     } else {
       try {
@@ -933,7 +827,7 @@ export class Auth {
         return {
           status: false,
           errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-          details: error,
+          details: error
         };
       }
 
@@ -947,14 +841,10 @@ export class Auth {
   /**
    * Updates user's username and email fields.
    * @param userId User's ID.
-   * @param data User's data.
+   * @param data User's updatable data.
    * @returns Updated auth user.
    */
-  async update(userId: any, data: any): Promise<IAuthResponse<AuthUser>> {
-    if (data?.password) {
-      delete data.password;
-    }
-
+  async update(userId: any, data: { username: string; email: string }): Promise<IAuthResponse<AuthUser>> {
     const authUser = await new AuthUser().populateById(userId);
     if (!authUser.exists()) {
       return {
@@ -973,19 +863,16 @@ export class Auth {
     if (!authUser.isValid()) {
       return {
         status: false,
-        errors: authUser.collectErrors().map(x => x.code)
+        errors: authUser.collectErrors().map((x) => x.code)
       };
     } else {
       try {
-        await authUser.updateNonUpdatableFields([
-          'username',
-          'email',
-        ]);
+        await authUser.updateNonUpdatableFields(['username', 'email']);
       } catch (error) {
         return {
           status: false,
           errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
-          details: error,
+          details: error
         };
       }
 
@@ -995,5 +882,4 @@ export class Auth {
       };
     }
   }
-
 }

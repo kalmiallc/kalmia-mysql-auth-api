@@ -8,7 +8,7 @@ export enum AuthDbTables {
   TOKENS = 'authToken',
   ROLES = 'authRole',
   USER_ROLES = 'authUserRole',
-  ROLE_PERMISSIONS = 'authRolePermission',
+  ROLE_PERMISSIONS = 'authRolePermission'
 }
 
 /**
@@ -52,7 +52,7 @@ export enum AuthValidatorErrorCode {
   ROLE_PERMISSION_NAME_NOT_PRESENT = 100_422016,
   ROLE_NAME_NOT_PRESENT = 100_422017,
   USER_PIN_NOT_CORRECT_LENGTH = 100_422018,
-  USER_PIN_ALREADY_TAKEN = 100_422019,
+  USER_PIN_ALREADY_TAKEN = 100_422019
 }
 
 /**
@@ -61,6 +61,7 @@ export enum AuthValidatorErrorCode {
 export enum AuthBadRequestErrorCode {
   DEFAULT_BAD_REQUEST_ERROR = 100_400000,
   MISSING_DATA_ERROR = 100_400001,
+  ROLE_PERMISSION_ALREADY_EXISTS = 100_400002
 }
 
 /**
@@ -79,6 +80,7 @@ export enum AuthResourceNotFoundErrorCode {
   DEFAULT_RESOURCE_NOT_FOUND_ERROR = 100_404000,
   AUTH_USER_DOES_NOT_EXISTS = 100_404001,
   ROLE_DOES_NOT_EXISTS = 100_404002,
+  ROLE_PERMISSION_DOES_NOT_EXISTS = 100_404003
 }
 
 /**
@@ -98,7 +100,7 @@ export enum AuthJwtTokenType {
   USER_SIGN_UP = 'USER_SIGN_UP',
   USER_RESET_EMAIL = 'USER_RESET_EMAIL',
   USER_RESET_USERNAME = 'USER_RESET_USERNAME',
-  USER_RESET_PASSWORD = 'USER_RESET_PASSWORD',
+  USER_RESET_PASSWORD = 'USER_RESET_PASSWORD'
 }
 
 export const AuthServiceErrorPrefix = 100;

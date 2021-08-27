@@ -2,7 +2,16 @@
 import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
-import { BaseModel, DbModelStatus, getQueryParams, MySqlConnManager, MySqlUtil, PopulateFor, selectAndCountQuery, SerializeFor } from 'kalmia-sql-lib';
+import {
+  BaseModel,
+  DbModelStatus,
+  getQueryParams,
+  MySqlConnManager,
+  MySqlUtil,
+  PopulateFor,
+  selectAndCountQuery,
+  SerializeFor
+} from 'kalmia-sql-lib';
 import { Pool, PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
@@ -22,14 +31,8 @@ export class Role extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN,
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN]
   })
   public id: number;
 
@@ -38,22 +41,14 @@ export class Role extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN,
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-      SerializeFor.INSERT_DB,
-      SerializeFor.UPDATE_DB,
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT,
-      },
-    ],
+        code: AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT
+      }
+    ]
   })
   public name: string;
 
@@ -62,13 +57,8 @@ export class Role extends BaseModel {
    */
   @prop({
     parser: { resolver: RolePermission, array: true },
-    populatable: [
-      PopulateFor.DB,
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN
-    ],
+    populatable: [PopulateFor.DB],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN],
     defaultValue: () => [],
     emptyValue: () => []
   })
@@ -90,7 +80,7 @@ export class Role extends BaseModel {
 
   /**
    * Populates role's role permissions.
-   * 
+   *
    * @param conn (optional) database connection.
    * @returns Same instance with freshly populated role permissions.
    */
@@ -109,7 +99,7 @@ export class Role extends BaseModel {
     );
 
     for (const rp of res) {
-      let rolePermission = this.rolePermissions.find(x => x.id === rp.id);
+      let rolePermission = this.rolePermissions.find((x) => x.id === rp.id);
       if (!rolePermission) {
         rolePermission = new RolePermission({}).populate(rp, PopulateFor.DB);
         this.rolePermissions = [...this.rolePermissions, rolePermission];
@@ -147,7 +137,7 @@ export class Role extends BaseModel {
    * @param id Role's id.
    */
   public async populateById(id: any): Promise<this> {
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+    const res = await new MySqlUtil(await this.db()).paramQuery(
       `
       SELECT * FROM ${this.tableName}
       WHERE id = @id
@@ -164,6 +154,29 @@ export class Role extends BaseModel {
   }
 
   /**
+   * Deletes role permissions from the role.
+   * @param permissionIds List of role permissions.
+   */
+  public async deleteRolePermissions(permissionIds: number[]) {
+    try {
+      await new MySqlUtil(await this.db()).paramExecute(
+        `
+          DELETE rp
+          FROM ${AuthDbTables.ROLE_PERMISSIONS} rp
+          WHERE rp.role_id = @id AND
+            rp.permission_id IN (${permissionIds.join(', ')})
+        `,
+        {
+          id: this.id
+        }
+      );
+      this.rolePermissions = this.rolePermissions.filter((rp) => permissionIds.indexOf(rp.permission_id) === -1);
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+
+  /**
    * Returns a list of roles based on the given filter.
    *
    * @param filter Object used for filtering.
@@ -173,7 +186,7 @@ export class Role extends BaseModel {
     // Set default values or null for all params that we pass to sql query.
     const defaultParams = {
       id: null,
-      search: null,
+      search: null
     };
 
     // Map url query with sql fields.
@@ -232,7 +245,6 @@ export class Role extends BaseModel {
       `
     };
 
-
     const res = await selectAndCountQuery(new MySqlUtil(await this.db()), sqlQuery, params, 'r.id');
     const rows = res.items;
 
@@ -246,16 +258,19 @@ export class Role extends BaseModel {
 
       let permission = role.rolePermissions.find((rp) => rp.permission_id === row.permission_id);
       if (!permission) {
-        permission = new RolePermission({}).populate({
-          ...row,
-          ...row.rpName ? { name: row.rpName } : { name: null },
-          ...row.rpStatus ? { status: row.rpStatus } : { status: null },
-          ...row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null },
-          ...row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null },
-          ...row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null },
-          ...row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
-          id: null
-        }, PopulateFor.DB);
+        permission = new RolePermission({}).populate(
+          {
+            ...row,
+            ...(row.rpName ? { name: row.rpName } : { name: null }),
+            ...(row.rpStatus ? { status: row.rpStatus } : { status: null }),
+            ...(row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null }),
+            ...(row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null }),
+            ...(row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null }),
+            ...(row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null }),
+            id: null
+          },
+          PopulateFor.DB
+        );
 
         if (permission.exists()) {
           role.rolePermissions = [...role.rolePermissions, permission];
@@ -268,5 +283,4 @@ export class Role extends BaseModel {
       total: res.total
     };
   }
-
 }

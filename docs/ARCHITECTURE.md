@@ -36,9 +36,10 @@ A route should define what actions (CRUD) are allowed on a resource. A database 
 Roles and role permissions are entered in the following way:
 ```typescript
 const role = await auth.createRole('MY_ROLE');
-const success = await auth.addPermissionsToRole('MY_ROLE', [
+const success = await auth.addPermissionsToRole(role.id, [
   {
     permission_id: Permission.NOTIFICATION_SETTINGS,
+    name: Permission[Permission.NOTIFICATION_SETTINGS]
     read: PermissionLevel.OWN,
     write: PermissionLevel.OWN,
     execute: PermissionLevel.NONE,

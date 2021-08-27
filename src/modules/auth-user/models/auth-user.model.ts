@@ -14,24 +14,24 @@ import { PermissionPass } from '../../auth/interfaces/permission-pass.interface'
 /**
  * Conditional presence validator based on ID property.
  */
-const passwordHashConditionalPresenceValidator = (fieldNames: string[]) => async function(this: AuthUser, value: any) {
-  if (this.id) {
-    let fieldIsPresent = false;
-    for (const fieldName of fieldNames) {
-      if (isPresent(this[fieldName])) {
-        fieldIsPresent = true;
-        break;
+const passwordHashConditionalPresenceValidator = (fieldNames: string[]) =>
+  async function (this: AuthUser, value: any) {
+    if (this.id) {
+      let fieldIsPresent = false;
+      for (const fieldName of fieldNames) {
+        if (isPresent(this[fieldName])) {
+          fieldIsPresent = true;
+          break;
+        }
       }
+      return fieldIsPresent;
     }
-    return fieldIsPresent;
-  }
-  return true;
-};
+    return true;
+  };
 
 function getRandomDigit() {
   return Math.floor(Math.random() * 10);
 }
-
 
 /**
  * Auth user model.
@@ -95,10 +95,9 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
       }
     ],
-    fakeValue: () => `User${Math.floor(Math.random() * 10_000)}`,
+    fakeValue: () => `User${Math.floor(Math.random() * 10_000)}`
   })
   public username: string;
-
 
   /**
    * Auth user's email property definition.
@@ -107,7 +106,7 @@ export class AuthUser extends BaseModel {
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB, PopulateFor.PROFILE],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
-    setter: (v) => v ? v.toLowerCase().replace(' ', '') : v,
+    setter: (v) => (v ? v.toLowerCase().replace(' ', '') : v),
     validators: [
       {
         resolver: emailValidator(),
@@ -118,7 +117,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN
       }
     ],
-    fakeValue: () => `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+    fakeValue: () => `${Math.floor(Math.random() * 10_000)}@domain-example.com`
   })
   public email: string;
 
@@ -133,9 +132,9 @@ export class AuthUser extends BaseModel {
       {
         resolver: passwordHashConditionalPresenceValidator(['passwordHash', 'PIN']),
         code: AuthValidatorErrorCode.USER_PASSWORD_OR_PIN_NOT_PRESENT
-      },
+      }
     ],
-    fakeValue: () => bcrypt.hashSync('Password123', bcrypt.genSaltSync(10)),
+    fakeValue: () => bcrypt.hashSync('Password123', bcrypt.genSaltSync(10))
   })
   public passwordHash: string;
 
@@ -148,7 +147,7 @@ export class AuthUser extends BaseModel {
     populatable: [PopulateFor.DB],
     validators: [
       {
-        resolver: stringLengthValidator({ minOrEqual: 4, maxOrEqual: 4}),
+        resolver: stringLengthValidator({ minOrEqual: 4, maxOrEqual: 4 }),
         code: AuthValidatorErrorCode.USER_PIN_NOT_CORRECT_LENGTH
       },
       {
@@ -156,7 +155,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN
       }
     ],
-    fakeValue: () => `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`,
+    fakeValue: () => `${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}${getRandomDigit()}`
   })
   public PIN: string;
 
@@ -172,7 +171,6 @@ export class AuthUser extends BaseModel {
   })
   public roles: Role[];
 
-  
   /**
    * Auth user's permissions property definition
    */
@@ -181,7 +179,7 @@ export class AuthUser extends BaseModel {
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.PROFILE],
     validators: [],
-    defaultValue: () => [],
+    defaultValue: () => []
   })
   public permissions: RolePermission[];
 
@@ -196,7 +194,7 @@ export class AuthUser extends BaseModel {
 
   /**
    * Sets user model's password hash. Does not update database entry on its own.
-   * 
+   *
    * @param password User password
    */
   public setPassword(password: string): void {
@@ -245,7 +243,7 @@ export class AuthUser extends BaseModel {
         `,
       { username }
     );
-  
+
     if (!res.length) {
       return this.reset();
     }
@@ -272,11 +270,11 @@ export class AuthUser extends BaseModel {
           `,
       { pin }
     );
-    
+
     if (!res.length) {
       return this.reset();
     }
-  
+
     this.populate(res[0]);
     if (populateRoles) {
       await this.getRoles();
@@ -285,7 +283,6 @@ export class AuthUser extends BaseModel {
 
     return this;
   }
-  
 
   /**
    * Populates model fields by id.
@@ -404,28 +401,30 @@ export class AuthUser extends BaseModel {
     );
 
     for (const row of rows) {
-      let role = this.roles.find(x => x.id === row.id);
+      let role = this.roles.find((x) => x.id === row.id);
       if (!role) {
         role = new Role().populate(row, PopulateFor.DB);
         this.roles = [...this.roles, role];
       }
-      let permission = role.rolePermissions.find(x => x.permission_id == row.permission_id);
+      let permission = role.rolePermissions.find((x) => x.permission_id == row.permission_id);
       if (!permission) {
-        permission = new RolePermission({}).populate({
-          ...row,
-          ...row.rpName ? { name: row.rpName } : { name: null },
-          ...row.rpStatus ? { status: row.rpStatus } : { status: null },
-          ...row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null },
-          ...row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null },
-          ...row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null },
-          ...row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null },
-          id: null
-        }, PopulateFor.DB);
+        permission = new RolePermission({}).populate(
+          {
+            ...row,
+            ...(row.rpName ? { name: row.rpName } : { name: null }),
+            ...(row.rpStatus ? { status: row.rpStatus } : { status: null }),
+            ...(row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null }),
+            ...(row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null }),
+            ...(row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null }),
+            ...(row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null }),
+            id: null
+          },
+          PopulateFor.DB
+        );
 
         if (permission.exists()) {
           role.rolePermissions = [...role.rolePermissions, permission];
         }
-
       }
     }
 
@@ -462,7 +461,7 @@ export class AuthUser extends BaseModel {
     );
 
     for (const p of res) {
-      let permission = this.permissions.find(x => x.id === p.id);
+      let permission = this.permissions.find((x) => x.id === p.id);
       if (!permission) {
         permission = new RolePermission({}).populate(p, PopulateFor.DB);
         this.permissions = [...this.permissions, permission];
@@ -488,19 +487,19 @@ export class AuthUser extends BaseModel {
       }
     }
 
-    await new MySqlUtil(await MySqlConnManager.getInstance().getConnection()).paramQuery(`
+    await new MySqlUtil(await MySqlConnManager.getInstance().getConnection()).paramQuery(
+      `
       UPDATE \`${this.tableName}\`
       SET
-        ${Object
-    .keys(updatable)
-    .map((x) => `\`${x}\` = @${x}`)
-    .join(',\n')}
+        ${Object.keys(updatable)
+          .map((x) => `\`${x}\` = @${x}`)
+          .join(',\n')}
       WHERE id = @id
       `,
-    {
-      ...updatable,
-      id: this.id,
-    }
+      {
+        ...updatable,
+        id: this.id
+      }
     );
 
     return this;
@@ -533,12 +532,12 @@ export class AuthUser extends BaseModel {
       const createQuery = `
       INSERT INTO \`${this.tableName}\`
       ( ${Object.keys(serializedModel)
-    .map((x) => `\`${x}\``)
-    .join(', ')} )
+        .map((x) => `\`${x}\``)
+        .join(', ')} )
       VALUES (
         ${Object.keys(serializedModel)
-    .map((key) => `@${key}`)
-    .join(', ')}
+          .map((key) => `@${key}`)
+          .join(', ')}
       )`;
 
       await mySqlHelper.paramExecute(createQuery, serializedModel, options.conn);

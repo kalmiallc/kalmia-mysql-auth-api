@@ -18,7 +18,7 @@ export class Token extends BaseModel {
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
-    validators: [],
+    validators: []
   })
   public user_id: number;
 
@@ -28,7 +28,7 @@ export class Token extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB]
   })
   public subject: string;
 
@@ -48,7 +48,7 @@ export class Token extends BaseModel {
   @prop({
     parser: { resolver: dateParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE],
+    serializable: [SerializeFor.PROFILE]
   })
   public expiresAt: Date;
 
@@ -58,7 +58,7 @@ export class Token extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB]
   })
   public token: string;
 
@@ -67,7 +67,7 @@ export class Token extends BaseModel {
    */
   @prop({
     populatable: [],
-    serializable: [],
+    serializable: []
   })
   public payload: any;
 
@@ -113,7 +113,7 @@ export class Token extends BaseModel {
           user_id: this.user_id,
           subject: this.subject,
           expiresAt: this.expiresAt,
-          status: DbModelStatus.ACTIVE,
+          status: DbModelStatus.ACTIVE
         },
         conn
       );
@@ -133,25 +133,31 @@ export class Token extends BaseModel {
   public async refresh(): Promise<string> {
     try {
       this.payload = jwt.decode(this.token);
+
       this.exp = this.payload.exp - this.payload.iat;
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      delete this.payload.exp, this.payload.iat;
+      delete this.payload.exp;
+      delete this.payload.iat;
+
       this.subject = this.payload.sub;
       delete this.payload.sub;
 
-      const query = `
+      const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `
         SELECT t.token, t.user_id, t.status, t.subject, t.expiresAt
         FROM \`${this.tableName}\` t
         WHERE t.token = @token
           AND t.expiresAt > CURRENT_TIMESTAMP
           AND t.status < ${DbModelStatus.DELETED}
-      `;
-      const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { token: this.token });
+      `,
+        { token: this.token }
+      );
+
       if (data && data.length) {
         this.populate(data[0], PopulateFor.DB);
         return await this.generate(this.exp);
       }
     } catch (e) {
+      return null;
     }
     return null;
   }
@@ -186,12 +192,10 @@ export class Token extends BaseModel {
     const conn = await sqlUtil.start();
 
     try {
-      const updateQuery = `UPDATE \`${this.tableName}\`  t
-        SET t.status = ${DbModelStatus.DELETED}
-        WHERE t.token = @token`;
-
       await sqlUtil.paramExecute(
-        updateQuery,
+        `UPDATE \`${this.tableName}\`  t
+        SET t.status = ${DbModelStatus.DELETED}
+        WHERE t.token = @token`,
         {
           token: this.token
         },
@@ -218,13 +222,9 @@ export class Token extends BaseModel {
     }
 
     try {
-      const payload = jwt.verify(
-        this.token,
-        env.APP_SECRET,
-        {
-          subject: this.subject,
-        }
-      );
+      const payload = jwt.verify(this.token, env.APP_SECRET, {
+        subject: this.subject
+      });
 
       if (payload) {
         const query = `
@@ -246,6 +246,7 @@ export class Token extends BaseModel {
         }
       }
     } catch (e) {
+      return null;
     }
     return null;
   }
