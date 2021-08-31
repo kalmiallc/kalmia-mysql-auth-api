@@ -1670,7 +1670,7 @@ describe('Auth', () => {
   });
 
   describe('Login with PIN tests', () => {
-    it('Should login user with its PIN number and allowed roles', async () => {
+    it('Should login user with its PIN', async () => {
       const auth = Auth.getInstance();
 
       const user = (
@@ -1688,7 +1688,7 @@ describe('Auth', () => {
       ]);
       await auth.grantRoles([role.id], user.id);
 
-      const token = await auth.loginPin(user.PIN, [role.id]);
+      const token = await auth.loginPin(user.PIN);
       const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
@@ -1711,7 +1711,7 @@ describe('Auth', () => {
       );
     });
 
-    it('Should not login user with its incorrect PIN number and allowed roles', async () => {
+    it('Should not login user with its incorrect PIN', async () => {
       const auth = Auth.getInstance();
 
       const user = (
@@ -1729,73 +1729,7 @@ describe('Auth', () => {
       ]);
       await auth.grantRoles([role.id], user.id);
 
-      const token = await auth.loginPin('2345', [role.id]);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-      );
-
-      expect(tokens.length).toBe(1);
-      expect(tokens).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            COUNT: 0
-          })
-        ])
-      );
-
-      expect(token.status).toEqual(false);
-      expect(token.errors).toEqual(expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]));
-    });
-
-    it('Should not login user with its correct PIN number and without allowed roles specified', async () => {
-      const auth = Auth.getInstance();
-
-      const user = (
-        await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
-          username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
-          password: faker.internet.password(),
-          PIN: '1234'
-        })
-      ).data;
-
-      const token = await auth.loginPin(user.PIN, []);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-      );
-
-      expect(tokens.length).toBe(1);
-      expect(tokens).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            COUNT: 0
-          })
-        ])
-      );
-
-      expect(token.status).toEqual(false);
-      expect(token.errors).toEqual(expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]));
-    });
-
-    it('Should not login user with its correct PIN number and without allowed roles', async () => {
-      const auth = Auth.getInstance();
-
-      const user = (
-        await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
-          username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
-          password: faker.internet.password(),
-          PIN: '1234'
-        })
-      ).data;
-
-      const role = await insertRoleWithPermissions(faker.lorem.words(3), [
-        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-      ]);
-
-      const token = await auth.loginPin(user.PIN, [role.id]);
+      const token = await auth.loginPin('2345');
       const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );

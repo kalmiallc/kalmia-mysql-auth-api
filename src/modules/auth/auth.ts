@@ -571,13 +571,13 @@ export class Auth {
 
   /**
    * Validates user's login credentials. If accepted, returns authentication JWT.
+   * This function should be limited by the origin calling function by user's permissions.
+   *
    * @param pin User's PIN number.
-   * @param allowedRoleIds List of role IDs that are allowed to use PIN authentication.
    * @returns Authentication JWT
    */
-  async loginPin(pin: string, allowedRoleIds: number[]): Promise<IAuthResponse<string>> {
+  async loginPin(pin: string): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByPin(pin);
-
     if (!user.exists()) {
       return {
         status: false,
@@ -585,29 +585,14 @@ export class Auth {
       };
     }
 
-    if (allowedRoleIds.length == 0) {
-      return {
-        status: false,
-        errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
-      };
-    }
-
-    for (const roleId of allowedRoleIds) {
-      if (!(await user.hasRole(roleId))) {
-        return {
-          status: false,
-          errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
-        };
-      }
-    }
-
     return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
   }
 
   /**
-   * Creates auth user with provided data
-   * @param data auth user data
-   * @returns new auth user
+   * Creates auth user with provided data.
+   *
+   * @param data Auth user data.
+   * @returns AuthUser.
    */
   async createAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>> {
     const user: AuthUser = new AuthUser(data);
