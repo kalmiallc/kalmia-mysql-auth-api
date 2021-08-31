@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/indent */
 /* eslint-disable @typescript-eslint/member-ordering */
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { isPresent } from '@rawmodel/utils';
@@ -559,6 +560,46 @@ export class AuthUser extends BaseModel {
         await mySqlHelper.rollback(options.conn);
       }
       throw new Error(err);
+    }
+
+    return this;
+  }
+
+  /**
+   * Revokes specified roles from user.
+   * @param roleIds Role IDs.
+   * @param conn (optional) Database connection.
+   * @returns AuthUser (this)
+   */
+  public async revokeRoles(roleIds: number[], connection?: PoolConnection): Promise<this> {
+    const { singleTrans, sql, conn } = await this.getDbConnection(connection);
+
+    try {
+      const deleteQuery = `
+      DELETE ur
+      FROM ${AuthDbTables.USER_ROLES} ur
+      JOIN ${AuthDbTables.ROLES} r
+        ON ur.role_id = r.id
+      WHERE r.id IN (${roleIds.map((roleId) => `"${roleId}"`).join(', ')})
+        AND ur.user_id = @userId
+    `;
+
+      await sql.paramExecute(
+        deleteQuery,
+        {
+          userId: this.id
+        },
+        conn
+      );
+
+      if (singleTrans) {
+        await sql.commit(conn);
+      }
+    } catch (error) {
+      if (singleTrans) {
+        await sql.rollback(conn);
+      }
+      throw new Error(error);
     }
 
     return this;

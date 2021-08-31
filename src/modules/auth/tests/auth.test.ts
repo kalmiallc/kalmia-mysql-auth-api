@@ -18,6 +18,7 @@ import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-help
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
 import { insertRoleWithPermissions } from '../../test-helpers/permission';
+import { exception } from 'console';
 
 describe('Auth', () => {
   beforeEach(async () => {
@@ -141,57 +142,85 @@ describe('Auth', () => {
     );
   });
 
-  it("Should revoke user's roles and ignore those he doesn't have", async () => {
-    const user = await insertAuthUser();
-    const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-    const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
-      { permission_id: 3, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-    const auth = Auth.getInstance();
-    await auth.grantRoles([role1.id], user.id);
+  describe("Revoke user's roles tests", () => {
+    it("Should revoke many user's roles", async () => {
+      const user = await insertAuthUser();
+      const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 3, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const auth = Auth.getInstance();
+      await auth.grantRoles([role1.id, role2.id], user.id);
 
-    const roles = await auth.getAuthUserRoles(user.id);
-    expect(roles.data?.length).toBe(1);
+      const roles = await auth.getAuthUserRoles(user.id);
+      expect(roles.data?.length).toBe(2);
 
-    await auth.revokeRoles([role1.name, role2.name], user.id);
-    const roles2 = await auth.getAuthUserRoles(user.id);
-    expect(roles2.data.length).toBe(0);
-  });
+      await auth.revokeRoles([role1.id, role2.id], user.id);
+      const roles2 = await auth.getAuthUserRoles(user.id);
+      expect(roles2.data.length).toBe(0);
+    });
 
-  it("Should revoke user's roles and leave the ones not being removed", async () => {
-    const user = await insertAuthUser();
-    const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-    const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
-      { permission_id: 4, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-    const role3 = await insertRoleWithPermissions(faker.lorem.words(3), [
-      { permission_id: 5, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-    const auth = Auth.getInstance();
-    await auth.grantRoles([role1.id, role3.id], user.id);
+    it("Should revoke one of the user's roles", async () => {
+      const user = await insertAuthUser();
+      const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 3, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const auth = Auth.getInstance();
+      await auth.grantRoles([role1.id, role2.id], user.id);
 
-    const roles = await auth.getAuthUserRoles(user.id);
+      const roles = await auth.getAuthUserRoles(user.id);
+      expect(roles.data?.length).toBe(2);
 
-    expect(roles.data?.length).toBe(2);
+      await auth.revokeRoles([role1.id], user.id);
+      const roles2 = await auth.getAuthUserRoles(user.id);
+      expect(roles2.data.length).toBe(1);
+    });
 
-    await auth.revokeRoles([role1.name, role2.name], user.id);
+    it("Should not revoke user's roles if nonexistent role is specified", async () => {
+      const user = await insertAuthUser();
+      const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const auth = Auth.getInstance();
+      await auth.grantRoles([role1.id], user.id);
 
-    const roles2 = await auth.getAuthUserRoles(user.id);
+      const roles = await auth.getAuthUserRoles(user.id);
+      expect(roles.data?.length).toBe(1);
 
-    expect(roles2.data.length).toBe(1);
-    expect(roles2).toEqual(
-      expect.objectContaining({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            name: role3.name
-          })
-        ])
-      })
-    );
+      const res = await auth.revokeRoles([role1.id, 123], user.id);
+      expect(res.status).toEqual(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]));
+
+      const roles2 = await auth.getAuthUserRoles(user.id);
+      expect(roles2.data.length).toBe(1);
+    });
+
+    it("Should not revoke user's roles if role that he does not have is specified", async () => {
+      const user = await insertAuthUser();
+      const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 3, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const auth = Auth.getInstance();
+      await auth.grantRoles([role1.id], user.id);
+
+      const roles = await auth.getAuthUserRoles(user.id);
+      expect(roles.data?.length).toBe(1);
+
+      const res = await auth.revokeRoles([role1.id, role2.id], user.id);
+      expect(res.status).toEqual(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthBadRequestErrorCode.AUTH_USER_ROLE_DOES_NOT_EXISTS]));
+
+      const roles2 = await auth.getAuthUserRoles(user.id);
+      expect(roles2.data.length).toBe(1);
+    });
   });
 
   it('Should get user permissions', async () => {
@@ -1349,7 +1378,7 @@ describe('Auth', () => {
     expect(canAccess.data).toBe(true);
   });
 
-  describe('Login user with password and username/email', () => {
+  describe('Login user with password and username/email tests', () => {
     it('Should login user with its email and password', async () => {
       const auth = Auth.getInstance();
 

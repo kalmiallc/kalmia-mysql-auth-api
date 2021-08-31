@@ -105,10 +105,17 @@ export class Auth {
             errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
           };
         }
+        if (await user.hasRole(role.id, conn)) {
+          await sql.rollback(conn);
+
+          return {
+            status: false,
+            errors: [AuthBadRequestErrorCode.AUTH_USER_ROLE_ALREADY_EXISTS]
+          };
+        }
+
         await user.addRole(role.id, conn, false);
       }
-
-      // TODO: Check if user already has this role?
 
       await user.populateRoles(conn);
       await sql.commit(conn);
@@ -130,11 +137,11 @@ export class Auth {
 
   /**
    * Removes roles from user.
-   * @param roles Array of role names to remove from user.
+   * @param roleIds Array of role IDs to remove from user.
    * @param userId Id of the user the roles should be removed from
    * @returns updated user roles
    */
-  async revokeRoles(roles: string[], userId: number): Promise<IAuthResponse<Role[]>> {
+  async revokeRoles(roleIds: number[], userId: number): Promise<IAuthResponse<Role[]>> {
     const user = await new AuthUser().populateById(userId);
     if (!user.exists()) {
       return {
@@ -143,16 +150,42 @@ export class Auth {
       };
     }
 
-    const query = `
-      DELETE ur
-      FROM ${AuthDbTables.USER_ROLES} ur
-      JOIN ${AuthDbTables.ROLES} r
-        ON ur.role_id = r.id
-      WHERE r.name IN (${roles.map((role) => `"${role}"`).join(', ')})
-        AND ur.user_id = @userId
-    `;
-    await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, { userId });
-    await user.populateRoles();
+    const sql = new MySqlUtil(await MySqlConnManager.getInstance().getConnection());
+    const conn = await sql.start();
+    try {
+      for (const roleId of roleIds) {
+        const role = await new Role().populateById(roleId, conn);
+        if (!role.exists()) {
+          await sql.rollback(conn);
+
+          return {
+            status: false,
+            errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
+          };
+        }
+
+        if (!(await user.hasRole(role.id, conn))) {
+          await sql.rollback(conn);
+
+          return {
+            status: false,
+            errors: [AuthBadRequestErrorCode.AUTH_USER_ROLE_DOES_NOT_EXISTS]
+          };
+        }
+      }
+
+      await user.revokeRoles(roleIds, conn);
+      await user.populateRoles(conn);
+      await sql.commit(conn);
+    } catch (error) {
+      await sql.rollback(conn);
+
+      return {
+        status: false,
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error
+      };
+    }
 
     return {
       status: true,
