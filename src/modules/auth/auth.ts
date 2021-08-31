@@ -141,7 +141,7 @@ export class Auth {
    * @param userId Id of the user the roles should be removed from
    * @returns updated user roles
    */
-  async revokeRoles(roleIds: number[], userId: number): Promise<IAuthResponse<Role[]>> {
+  async revokeRoles(roleIds: number[], userId: number): Promise<IAuthResponse<AuthUser>> {
     const user = await new AuthUser().populateById(userId);
     if (!user.exists()) {
       return {
@@ -189,7 +189,7 @@ export class Auth {
 
     return {
       status: true,
-      data: user.roles
+      data: user
     };
   }
 
