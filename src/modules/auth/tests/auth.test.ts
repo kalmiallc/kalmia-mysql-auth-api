@@ -2,14 +2,12 @@ import * as faker from 'faker';
 import * as jwt from 'jsonwebtoken';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
-import { env } from '../../../config/env';
 import {
   AuthAuthenticationErrorCode,
   AuthBadRequestErrorCode,
   AuthDbTables,
   AuthJwtTokenType,
   AuthResourceNotFoundErrorCode,
-  AuthSystemErrorCode,
   AuthValidatorErrorCode,
   PermissionLevel,
   PermissionType
@@ -18,11 +16,13 @@ import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-help
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
 import { insertRoleWithPermissions } from '../../test-helpers/permission';
-import { exception } from 'console';
+import { Role } from '../../auth-user/models/role.model';
+import { AuthUser } from '../../..';
 
-describe('Auth', () => {
+describe('Auth service tests', () => {
   beforeEach(async () => {
     await connectToDb();
+    await cleanDatabase();
   });
 
   afterEach(async () => {
@@ -33,34 +33,73 @@ describe('Auth', () => {
     await closeConnectionToDb();
   });
 
-  it('Create user and get by ID', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const userRes = await auth.getAuthUserById(user.id);
-    expect(user.id).toBe(userRes?.data?.id);
-    expect(user.email).toBe(userRes?.data?.email);
+  describe('Get auth user tests - ID, email, username, PIN', () => {
+    it('Should get user by his ID', async () => {
+      const auth = Auth.getInstance();
+      const user = await insertAuthUser();
+
+      const userRes = await auth.getAuthUserById(user.id);
+      expect(userRes.data.exists()).toBe(true);
+      expect(user.id).toBe(userRes?.data?.id);
+      expect(user.email).toBe(userRes?.data?.email);
+    });
+
+    it('Should not get non existing user by its ID', async () => {
+      const auth = Auth.getInstance();
+
+      const userRes = await auth.getAuthUserById(123);
+      expect(userRes.status).toEqual(false);
+      expect(userRes.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
+    });
+
+    it('Should get user by its email', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+
+      const userRes = await auth.getAuthUserByEmail(user.email);
+      expect(userRes.data.exists()).toBe(true);
+      expect(user.id).toBe(userRes?.data?.id);
+      expect(user.email).toBe(userRes?.data?.email);
+    });
+
+    it('Should not get non existing user by its email', async () => {
+      const auth = Auth.getInstance();
+
+      const userRes = await auth.getAuthUserByEmail('non.existent@example.com');
+      expect(userRes.status).toEqual(false);
+      expect(userRes.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
+    });
   });
 
-  it('Try finding non-existing user by ID and return error', async () => {
-    const auth = Auth.getInstance();
-    const userRes = await auth.getAuthUserById(123);
-    expect(userRes.status).toEqual(false);
-    expect(userRes.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
-  });
+  describe('Delete user test', () => {
+    it('Should delete existing user', async () => {
+      const auth = Auth.getInstance();
 
-  it('Create user and get by email', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const userRes = await auth.getAuthUserByEmail(user.email);
-    expect(user.id).toBe(userRes?.data?.id);
-    expect(user.email).toBe(userRes?.data?.email);
-  });
+      const obj = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password()
+      };
+      const user = await auth.createAuthUser(obj);
+      const deletedUser = await auth.deleteAuthUser(user.data.id);
+      delete obj.password;
 
-  it('Try finding non-existing user by email and return empty user', async () => {
-    const auth = Auth.getInstance();
-    const userRes = await auth.getAuthUserByEmail('non.existent@example.com');
-    expect(userRes.status).toEqual(false);
-    expect(userRes.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
+      expect(deletedUser.data).toEqual(expect.objectContaining(obj));
+      expect(deletedUser.data.status).toBe(DbModelStatus.DELETED);
+
+      const noAuthUser = await auth.getAuthUserById(user.data.id);
+      expect(noAuthUser.status).toEqual(false);
+      expect(noAuthUser.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
+    });
+
+    it('Should not delete non-existing user', async () => {
+      const auth = Auth.getInstance();
+
+      const res = await auth.deleteAuthUser(123);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
+    });
   });
 
   it('[HELPER] Query should create and find 1 role with 2 permissions', async () => {
@@ -94,52 +133,218 @@ describe('Auth', () => {
     );
   });
 
-  it('Should add role to user', async () => {
-    const user = await insertAuthUser();
-    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
-      {
-        permission_id: 1,
-        name: faker.lorem.words(1),
-        read: PermissionLevel.OWN,
-        write: PermissionLevel.NONE,
-        execute: PermissionLevel.NONE
-      }
-    ]);
-    const auth = Auth.getInstance();
-    await auth.grantRoles([role.id], user.id);
-    const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
-    );
-    expect(permissionCount.length).toBe(1);
-    expect(permissionCount).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-  });
+  describe("Grant user's roles tests", () => {
+    it('Should grant role to user', async () => {
+      const auth = Auth.getInstance();
 
-  it("Should get user's roles", async () => {
-    const user = await insertAuthUser();
-    const role = await insertRoleWithPermissions(faker.lorem.words(3), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
+      let user = await insertAuthUser();
+      const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      const res = await auth.grantRoles([role.id], user.id);
+      expect(res.status).toBe(true);
 
-    const auth = Auth.getInstance();
-    await auth.grantRoles([role.id], user.id);
-    const roles = await auth.getAuthUserRoles(user.id);
+      user = res.data;
+      expect(user.roles.length).toBe(1);
+      expect(user.permissions.length).toBe(1);
 
-    expect(roles.data?.length).toBe(1);
-    expect(roles).toEqual(
-      expect.objectContaining({
-        data: expect.arrayContaining([
+      const updatedUser = await new AuthUser().populateById(user.id);
+      await updatedUser.populateRoles();
+      expect(updatedUser.roles.length).toBe(1);
+      expect(updatedUser.permissions.length).toBe(1);
+
+      const rolesCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
+      );
+      expect(rolesCount.length).toBe(1);
+      expect(rolesCount).toEqual(
+        expect.arrayContaining([
           expect.objectContaining({
-            name: role.name
+            COUNT: 1
           })
         ])
-      })
-    );
+      );
+    });
+
+    it('Should grant many roles to user', async () => {
+      const auth = Auth.getInstance();
+
+      let user = await insertAuthUser();
+      const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      const role3 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        },
+        {
+          permission_id: 2,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      const res = await auth.grantRoles([role1.id, role2.id, role3.id], user.id);
+      expect(res.status).toBe(true);
+
+      user = res.data;
+      expect(user.roles.length).toBe(3);
+      expect(user.permissions.length).toBe(4);
+
+      const updatedUser = await new AuthUser().populateById(user.id);
+      await updatedUser.populateRoles();
+      expect(updatedUser.roles.length).toBe(3);
+      expect(updatedUser.permissions.length).toBe(4);
+
+      const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
+      );
+      expect(permissionCount.length).toBe(1);
+      expect(permissionCount).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 3
+          })
+        ])
+      );
+    });
+
+    it('Should not grant non-existing role to user', async () => {
+      const auth = Auth.getInstance();
+      const user = await insertAuthUser();
+
+      const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      const res = await auth.grantRoles([123, role.id], user.id);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]));
+
+      const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
+      );
+      expect(permissionCount.length).toBe(1);
+      expect(permissionCount).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 0
+          })
+        ])
+      );
+    });
+
+    it('Should not grant role to non-existing user', async () => {
+      const auth = Auth.getInstance();
+      const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      const res = await auth.grantRoles([role.id], 123);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
+    });
+
+    it('Should not grant already existing role to user', async () => {
+      const auth = Auth.getInstance();
+
+      let user = await insertAuthUser();
+      const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      let res = await auth.grantRoles([role.id], user.id);
+      expect(res.status).toBe(true);
+
+      res = await auth.grantRoles([role.id], user.id);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthBadRequestErrorCode.AUTH_USER_ROLE_ALREADY_EXISTS]));
+
+      const rolesCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
+      );
+      expect(rolesCount.length).toBe(1);
+      expect(rolesCount).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+    });
+  });
+
+  describe("Get user's roles tests", () => {
+    it("Should get user's roles", async () => {
+      const user = await insertAuthUser();
+      const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+
+      const auth = Auth.getInstance();
+      await auth.grantRoles([role.id], user.id);
+      const roles = await auth.getAuthUserRoles(user.id);
+
+      expect(roles.data?.length).toBe(1);
+      expect(roles).toEqual(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({
+              name: role.name
+            })
+          ])
+        })
+      );
+    });
+
+    it('Should not get roles of non-existing user', async () => {
+      const auth = Auth.getInstance();
+
+      const res = await auth.getAuthUserRoles(123);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
+    });
   });
 
   describe("Revoke user's roles tests", () => {
@@ -179,6 +384,41 @@ describe('Auth', () => {
       await auth.revokeRoles([role1.id], user.id);
       const roles2 = await auth.getAuthUserRoles(user.id);
       expect(roles2.data.length).toBe(1);
+    });
+
+    it("Should revoke one of the user's roles", async () => {
+      const user = await insertAuthUser();
+      const role1 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const role2 = await insertRoleWithPermissions(faker.lorem.words(3), [
+        { permission_id: 3, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
+      const auth = Auth.getInstance();
+      await auth.grantRoles([role1.id, role2.id], user.id);
+
+      const roles = await auth.getAuthUserRoles(user.id);
+      expect(roles.data?.length).toBe(2);
+
+      await auth.revokeRoles([role1.id], user.id);
+      const roles2 = await auth.getAuthUserRoles(user.id);
+      expect(roles2.data.length).toBe(1);
+    });
+
+    it('Should not revoke role from non-existing user', async () => {
+      const auth = Auth.getInstance();
+      const role = await insertRoleWithPermissions(faker.lorem.words(3), [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      const res = await auth.revokeRoles([role.id], 123);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
     });
 
     it("Should not revoke user's roles if nonexistent role is specified", async () => {
@@ -253,383 +493,387 @@ describe('Auth', () => {
     );
   });
 
-  it('Generate JWT token with provided data - no user', async () => {
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
+  describe('Generate JWT token tests', () => {
+    it('Should generate new JWT token and create new row in database with provided data and no user data', async () => {
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
 
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
 
-    const contents = jwt.decode(token.data);
-    expect(contents).toEqual(expect.objectContaining(obj));
+      const contents = jwt.decode(token.data);
+      expect(contents).toEqual(expect.objectContaining(obj));
 
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
 
-    expect(tokenEntry).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          token: token.data,
-          status: DbModelStatus.ACTIVE,
-          user_id: null,
-          subject: AuthJwtTokenType.USER_SIGN_UP
-        })
-      ])
-    );
-  });
-
-  it('Generate JWT token with provided data - user', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
-
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
-
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-
-    const contents = jwt.decode(token.data);
-    expect(contents).toEqual(expect.objectContaining(obj));
-
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-
-    expect(tokenEntry).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          token: token.data,
-          status: DbModelStatus.ACTIVE,
-          user_id: user.id,
-          subject: AuthJwtTokenType.USER_SIGN_UP
-        })
-      ])
-    );
-  });
-
-  it('Invalidate JWT token', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
-
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
-
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-
-    const contents = jwt.decode(token.data);
-    expect(contents).toEqual(expect.objectContaining(obj));
-    await auth.invalidateToken(token.data);
-
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-
-    expect(tokenEntry).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          token: token.data,
-          status: 9,
-          user_id: user.id,
-          subject: AuthJwtTokenType.USER_SIGN_UP
-        })
-      ])
-    );
-  });
-
-  it('Validate JWT token - 1 (TRUE)', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
-
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
-
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
-
-    expect(isValid.status).toBe(true);
-    expect(isValid.data).toEqual(expect.objectContaining(obj));
-  });
-
-  it('Validate JWT token - 2 (FALSE)', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
-
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
-
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-
-    const contents = jwt.decode(token.data);
-    await auth.invalidateToken(token.data);
-
-    const validation = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
-    expect(validation.status).toBe(false);
-    expect(validation.errors).toEqual(expect.arrayContaining([AuthAuthenticationErrorCode.INVALID_TOKEN]));
-  });
-
-  it('Validate JWT token - 3 (FALSE)', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
-
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    const differentSecretToken = jwt.sign(obj, 'badsecret', {
-      subject: AuthJwtTokenType.USER_SIGN_UP,
-      expiresIn: '1d'
-    });
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
-
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-
-    const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
-    expect(!!isValid.data).toBe(false);
-  });
-
-  it('Validate JWT token - 4 (FALSE)', async () => {
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
-
-    const differentSecretToken = jwt.sign(obj, 'badsecret', {
-      subject: AuthJwtTokenType.USER_SIGN_UP,
-      expiresIn: '1d'
+      expect(tokenEntry).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            token: token.data,
+            status: DbModelStatus.ACTIVE,
+            user_id: null,
+            subject: AuthJwtTokenType.USER_SIGN_UP
+          })
+        ])
+      );
     });
 
-    const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
-    expect(!!isValid.data).toBe(false);
+    it('Should generate new JWT token and create new row in database with provided data and user data', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
+
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
+
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+
+      const contents = jwt.decode(token.data);
+      expect(contents).toEqual(expect.objectContaining(obj));
+
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+
+      expect(tokenEntry).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            token: token.data,
+            status: DbModelStatus.ACTIVE,
+            user_id: user.id,
+            subject: AuthJwtTokenType.USER_SIGN_UP
+          })
+        ])
+      );
+    });
+  });
+  describe('Invalidate JWT token tests', () => {
+    it('Should invalidate JWT token', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
+
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
+
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+
+      const contents = jwt.decode(token.data);
+      expect(contents).toEqual(expect.objectContaining(obj));
+      await auth.invalidateToken(token.data);
+
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+
+      expect(tokenEntry).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            token: token.data,
+            status: 9,
+            user_id: user.id,
+            subject: AuthJwtTokenType.USER_SIGN_UP
+          })
+        ])
+      );
+    });
   });
 
-  it('Validate JWT token - 5 (FALSE)', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
+  describe('Validate JWT token tests', () => {
+    it('Should validate JWT token', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
 
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
 
-    const expired = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `UPDATE ${AuthDbTables.TOKENS}
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+      const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
+
+      expect(isValid.status).toBe(true);
+      expect(isValid.data).toEqual(expect.objectContaining(obj));
+    });
+
+    it('Validate JWT token - 2 (FALSE)', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
+
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
+
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+
+      const contents = jwt.decode(token.data);
+      await auth.invalidateToken(token.data);
+
+      const validation = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
+      expect(validation.status).toBe(false);
+      expect(validation.errors).toEqual(expect.arrayContaining([AuthAuthenticationErrorCode.INVALID_TOKEN]));
+    });
+
+    it('Validate JWT token - 3 (FALSE)', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
+
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const differentSecretToken = jwt.sign(obj, 'badsecret', {
+        subject: AuthJwtTokenType.USER_SIGN_UP,
+        expiresIn: '1d'
+      });
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
+
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+
+      const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
+      expect(!!isValid.data).toBe(false);
+    });
+
+    it('Validate JWT token - 4 (FALSE)', async () => {
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
+
+      const differentSecretToken = jwt.sign(obj, 'badsecret', {
+        subject: AuthJwtTokenType.USER_SIGN_UP,
+        expiresIn: '1d'
+      });
+
+      const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
+      expect(!!isValid.data).toBe(false);
+    });
+
+    it('Validate JWT token - 5 (FALSE)', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
+
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
+
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+
+      const expired = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `UPDATE ${AuthDbTables.TOKENS}
       SET expiresAt = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
       WHERE token = @token;`,
-      { token: token.data }
-    );
+        { token: token.data }
+      );
 
-    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
-    expect(!!isValid.data).toBe(false);
-  });
+      const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
+      expect(!!isValid.data).toBe(false);
+    });
 
-  it('Validate JWT token - 6 (FALSE)', async () => {
-    const auth = Auth.getInstance();
-    const isValid = await auth.validateToken('badtoken', AuthJwtTokenType.USER_SIGN_UP);
-    expect(!!isValid.data).toBe(false);
-  });
+    it('Validate JWT token - 6 (FALSE)', async () => {
+      const auth = Auth.getInstance();
+      const isValid = await auth.validateToken('badtoken', AuthJwtTokenType.USER_SIGN_UP);
+      expect(!!isValid.data).toBe(false);
+    });
 
-  it('Validate JWT token - 7 (TRUE)', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
+    it('Validate JWT token - 7 (TRUE)', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
 
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
 
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+      const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
 
-    expect(isValid.status).toBe(true);
-    expect(isValid.data).toEqual(expect.objectContaining(obj));
-  });
+      expect(isValid.status).toBe(true);
+      expect(isValid.data).toEqual(expect.objectContaining(obj));
+    });
 
-  it('Validate JWT token - 8 (FALSE)', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
+    it('Validate JWT token - 8 (FALSE)', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
 
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
 
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+      const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
 
-    expect(isValid.status).toBe(false);
-  });
+      expect(isValid.status).toBe(false);
+    });
 
-  it('Validate JWT token - 9 (FALSE)', async () => {
-    const user = await insertAuthUser();
-    const auth = Auth.getInstance();
-    const obj = {
-      name: 'person',
-      value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
-    };
+    it('Validate JWT token - 9 (FALSE)', async () => {
+      const user = await insertAuthUser();
+      const auth = Auth.getInstance();
+      const obj = {
+        name: 'person',
+        value: 42069,
+        email: faker.internet.email().toLowerCase()
+      };
 
-    const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
+      const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
+      );
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
 
-    const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT * FROM ${AuthDbTables.TOKENS};`
-    );
-    const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id + 1);
-
-    expect(isValid.status).toBe(false);
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT * FROM ${AuthDbTables.TOKENS};`
+      );
+      const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id + 1);
+      expect(isValid.status).toBe(false);
+    });
   });
 
   // TODO/FIXME: should refreshing a token invalidate the old one?
@@ -639,7 +883,7 @@ describe('Auth', () => {
     const obj = {
       name: 'person',
       value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
+      email: faker.internet.email().toLowerCase()
     };
 
     const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, null);
@@ -668,7 +912,7 @@ describe('Auth', () => {
     const obj = {
       name: 'person',
       value: 42069,
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
+      email: faker.internet.email().toLowerCase()
     };
 
     const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, null);
@@ -678,166 +922,186 @@ describe('Auth', () => {
     expect(newToken.errors).toEqual(expect.arrayContaining([AuthAuthenticationErrorCode.INVALID_TOKEN]));
   });
 
-  it('Add new role', async () => {
-    const auth = Auth.getInstance();
-    const roleStrOne = faker.lorem.words(3);
-    const role1 = await auth.createRole(roleStrOne);
-    expect(role1.status).toBe(true);
-    expect(role1.data).toEqual(
-      expect.objectContaining({
-        name: roleStrOne
-      })
-    );
+  describe('Create new role tests', () => {
+    it('Should create new role', async () => {
+      const auth = Auth.getInstance();
 
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
-    );
-
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
+      const roleName = faker.lorem.word();
+      const role = await auth.createRole(roleName);
+      expect(role.status).toBe(true);
+      expect(role.data).toEqual(
         expect.objectContaining({
-          COUNT: 1
+          name: roleName
         })
-      ])
-    );
+      );
+
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
+      );
+
+      expect(count.length).toBe(1);
+      expect(count).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+
+      const createdRole = await new Role().populateById(role.data.id);
+      expect(createdRole.exists()).toEqual(true);
+    });
+
+    it('Should not create new role with existing name', async () => {
+      const auth = Auth.getInstance();
+
+      const roleName = faker.lorem.word();
+      const role = await auth.createRole(roleName);
+
+      expect(role.status).toBe(true);
+      expect(role.data).toEqual(
+        expect.objectContaining({
+          name: roleName
+        })
+      );
+
+      const newRole = await auth.createRole(roleName);
+      expect(newRole.status).toBe(false);
+      expect(newRole.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_NAME_ALREADY_TAKEN]));
+
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
+      );
+
+      expect(count.length).toBe(1);
+      expect(count).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+    });
+
+    it('Should add more than one new role with different names', async () => {
+      const auth = Auth.getInstance();
+
+      const roleName1 = faker.lorem.words(3);
+      const role1 = await auth.createRole(roleName1);
+      expect(role1.status).toBe(true);
+      expect(role1.data).toEqual(
+        expect.objectContaining({
+          name: roleName1
+        })
+      );
+
+      const roleName2 = faker.lorem.words(3);
+      const role2 = await auth.createRole(roleName2);
+      expect(role2.status).toBe(true);
+      expect(role2.data).toEqual(
+        expect.objectContaining({
+          name: roleName2
+        })
+      );
+
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
+      );
+
+      expect(tokens.length).toBe(1);
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 2
+          })
+        ])
+      );
+    });
   });
 
-  it('Add more than one new role with different names', async () => {
-    const auth = Auth.getInstance();
-    const roleStrOne = faker.lorem.words(3);
-    const role1 = await auth.createRole(roleStrOne);
-    expect(role1.status).toBe(true);
-    expect(role1.data).toEqual(
-      expect.objectContaining({
-        name: roleStrOne
-      })
-    );
-    const roleStrTwo = faker.lorem.words(3);
-    const role2 = await auth.createRole(roleStrTwo);
-    expect(role2.status).toBe(true);
-    expect(role2.data).toEqual(
-      expect.objectContaining({
-        name: roleStrTwo
-      })
-    );
+  describe('Delete role tests', () => {
+    it('Should delete role, role permissions and user roles', async () => {
+      const auth = Auth.getInstance();
+      const permissions = [
+        {
+          permission_id: 1,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        },
+        {
+          permission_id: 2,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        },
+        {
+          permission_id: 3,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        },
+        {
+          permission_id: 4,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ];
+      const role = (await auth.createRole(faker.lorem.words(1))).data;
+      const role1 = (await auth.createRole(faker.lorem.words(1))).data;
+      await auth.addPermissionsToRole(role.id, permissions);
+      await auth.addPermissionsToRole(role1.id, [permissions[0], permissions[1]]);
 
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
-    );
-
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 2
+      const user = (
+        await auth.createAuthUser({
+          id: faker.datatype.number(10_000_000),
+          username: faker.internet.userName(),
+          email: faker.internet.email().toLowerCase(),
+          password: faker.internet.password()
         })
-      ])
-    );
-  });
+      ).data;
 
-  it('Add roles with same name', async () => {
-    const auth = Auth.getInstance();
-    const roleStrOne = faker.lorem.words(3);
-    const role1 = await auth.createRole(roleStrOne);
-    expect(role1.status).toBe(true);
-    expect(role1.data).toEqual(
-      expect.objectContaining({
-        name: roleStrOne
-      })
-    );
-    const role2 = await auth.createRole(roleStrOne);
-    expect(role2.status).toBe(false);
-    expect(role2.errors).toEqual(expect.arrayContaining([AuthSystemErrorCode.SQL_SYSTEM_ERROR]));
+      await auth.grantRoles([role.id, role1.id], user.id);
+      await user.populateRoles();
 
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
-    );
+      expect((await auth.getRolePermissions(role.id)).data.length).toEqual(4);
+      expect((await new Role().getList({})).total).toEqual(2);
+      expect(user.roles.length).toEqual(2);
+      expect(user.permissions.length).toEqual(6);
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-  });
+      await auth.deleteRole(role.id);
+      await user.populateRoles();
 
-  it('Create role', async () => {
-    const auth = Auth.getInstance();
+      expect((await new Role().getList({})).total).toEqual(1);
+      expect(user.roles.length).toEqual(1);
+      expect(user.permissions.length).toEqual(2);
 
-    const success = await auth.createRole('New role');
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
+      );
 
-    expect(success.status).toBe(true);
-    expect(success.data).toEqual(
-      expect.objectContaining({
-        name: 'New role'
-      })
-    );
+      expect(count.length).toBe(1);
+      expect(count).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            COUNT: 1
+          })
+        ])
+      );
+    });
 
-    const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
-    );
+    it('Should not delete non-existing role', async () => {
+      const auth = Auth.getInstance();
 
-    expect(count.length).toBe(1);
-    expect(count).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-  });
-
-  it('Create role with same name (should fail)', async () => {
-    const auth = Auth.getInstance();
-
-    const success = await auth.createRole('New role');
-    const failure = await auth.createRole('New role');
-
-    expect(success.status).toBe(true);
-    expect(success.data).toEqual(
-      expect.objectContaining({
-        name: 'New role'
-      })
-    );
-    expect(failure.status).toBe(false);
-    expect(failure.errors).toEqual(expect.arrayContaining([AuthSystemErrorCode.SQL_SYSTEM_ERROR]));
-
-    const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
-    );
-
-    expect(count.length).toBe(1);
-    expect(count).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
-  });
-
-  it('Delete role', async () => {
-    const auth = Auth.getInstance();
-
-    const success = await auth.createRole('New role');
-    const failure = await auth.createRole('New role 2');
-    await auth.deleteRole('New role');
-
-    const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
-    );
-
-    expect(count.length).toBe(1);
-    expect(count).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
+      const res = await auth.deleteRole(123);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]));
+    });
   });
 
   describe('Role permissions adding and removing tests', () => {
@@ -1022,56 +1286,191 @@ describe('Auth', () => {
   });
 
   describe('Create auth user tests', () => {
-    it('Should create auth user', async () => {
+    it('Should create new auth user', async () => {
       const auth = Auth.getInstance();
 
-      const obj = {
+      const userData = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
-      const user = await auth.createAuthUser(obj);
-      delete obj.password;
 
-      expect(user.status).toBe(true);
-      expect(user.data).toEqual(expect.objectContaining(obj));
+      const res = await auth.createAuthUser(userData);
+      expect(res.status).toBe(true);
+
+      const user = res.data;
+      expect(user.id).toBe(userData.id);
+      expect(user.username).toBe(userData.username);
+      expect(user.email).toBe(userData.email);
+      expect(user._createTime).not.toBeNull();
+      expect(user._updateTime).not.toBeNull();
+
+      const createdUser = await new AuthUser().populateById(user.id);
+      expect(createdUser.exists()).toBe(true);
+    });
+
+    it('Should not create new auth user with missing data', async () => {
+      const auth = Auth.getInstance();
+
+      const res = await auth.createAuthUser({} as any);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_ID_NOT_PRESENT]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT]));
     });
 
     it('Should create auth user - with PIN', async () => {
       const auth = Auth.getInstance();
 
-      const obj = {
+      const userData = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password(),
         PIN: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`
       };
-      const user = await auth.createAuthUser(obj);
-      delete obj.PIN;
 
-      expect(user.status).toBe(true);
-      expect(user.data).toEqual(expect.objectContaining(obj));
+      const res = await auth.createAuthUser(userData);
+      expect(res.status).toBe(true);
+
+      const user = res.data;
+      expect(user.id).toBe(userData.id);
+      expect(user.username).toBe(userData.username);
+      expect(user.email).toBe(userData.email);
+      expect(user.PIN).toBe(userData.PIN);
+      expect(user._createTime).not.toBeNull();
+      expect(user._updateTime).not.toBeNull();
+
+      const createdUser = await new AuthUser().populateById(user.id);
+      expect(createdUser.PIN).toBe(userData.PIN);
+      expect(createdUser.exists()).toBe(true);
     });
 
     it('Should not create two auth users with same PIN', async () => {
       const auth = Auth.getInstance();
 
-      const obj = {
+      const userData1 = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password(),
         PIN: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`
       };
-      const user = await auth.createAuthUser(obj);
+      const res1 = await auth.createAuthUser(userData1);
+      expect(res1.status).toBe(true);
 
-      expect(user.status).toBe(true);
-      expect(user.data).toEqual(expect.objectContaining(obj));
+      const userData2 = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password(),
+        PIN: userData1.PIN
+      };
 
-      obj.id = faker.datatype.number(10_000_000);
-      const user1 = await auth.createAuthUser(obj);
-      expect(user1.status).toBe(false);
-      delete obj.PIN;
+      const res2 = await auth.createAuthUser(userData2);
+      expect(res2.status).toBe(false);
+      expect(res2.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PIN_ALREADY_TAKEN]));
+    });
+
+    it('Should not create two auth users with the same username', async () => {
+      const auth = Auth.getInstance();
+
+      const userData1 = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password()
+      };
+      const res1 = await auth.createAuthUser(userData1);
+      expect(res1.status).toBe(true);
+
+      const userData2 = {
+        id: faker.datatype.number(10_000_000),
+        username: userData1.username,
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password()
+      };
+
+      const res2 = await auth.createAuthUser(userData2);
+      expect(res2.status).toBe(false);
+      expect(res2.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN]));
+    });
+
+    it('Should not create two auth users with the same email', async () => {
+      const auth = Auth.getInstance();
+
+      const userData1 = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password()
+      };
+      const res1 = await auth.createAuthUser(userData1);
+      expect(res1.status).toBe(true);
+
+      const userData2 = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: userData1.email,
+        password: faker.internet.password()
+      };
+
+      const res2 = await auth.createAuthUser(userData2);
+      expect(res2.status).toBe(false);
+      expect(res2.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN]));
+    });
+
+    it('Should not create two auth users with the same ID', async () => {
+      const auth = Auth.getInstance();
+
+      const userData1 = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password()
+      };
+      const res1 = await auth.createAuthUser(userData1);
+      expect(res1.status).toBe(true);
+
+      const userData2 = {
+        id: userData1.id,
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password()
+      };
+
+      const res2 = await auth.createAuthUser(userData2);
+      expect(res2.status).toBe(false);
+      expect(res2.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN]));
+    });
+
+    it('Should not create auth user with too short or too long PIN', async () => {
+      const auth = Auth.getInstance();
+
+      let userData = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password(),
+        PIN: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`
+      };
+      let res = await auth.createAuthUser(userData);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PIN_NOT_CORRECT_LENGTH]));
+
+      userData = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.email().toLowerCase(),
+        password: faker.internet.password(),
+        PIN: `${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(
+          Math.random() * 10
+        )}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`
+      };
+      res = await auth.createAuthUser(userData);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PIN_NOT_CORRECT_LENGTH]));
     });
 
     it('Should not create auth user with missing email', async () => {
@@ -1094,7 +1493,7 @@ describe('Auth', () => {
 
       const obj: any = {
         id: faker.datatype.number(10_000_000),
-        email: faker.internet.email(),
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = await auth.createAuthUser(obj);
@@ -1104,13 +1503,13 @@ describe('Auth', () => {
       expect(user.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT]));
     });
 
-    it('Should not create auth user with bad username', async () => {
+    it('Should not create auth user with invalid username', async () => {
       const auth = Auth.getInstance();
 
       const obj = {
         id: faker.datatype.number(10_000_000),
-        username: faker.internet.email(),
-        email: faker.internet.email(),
+        username: faker.internet.email().toLowerCase(),
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = await auth.createAuthUser(obj);
@@ -1120,262 +1519,170 @@ describe('Auth', () => {
       expect(user.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_NOT_VALID]));
     });
 
+    it('Should not create auth user with invalid email', async () => {
+      const auth = Auth.getInstance();
+
+      const obj = {
+        id: faker.datatype.number(10_000_000),
+        username: faker.internet.userName(),
+        email: faker.internet.userName(),
+        password: faker.internet.password()
+      };
+      const user = await auth.createAuthUser(obj);
+      delete obj.password;
+
+      expect(user.status).toBe(false);
+      expect(user.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_EMAIL_NOT_VALID]));
+    });
+
     it('Should not create auth user with missing password', async () => {
       const auth = Auth.getInstance();
 
       const obj: any = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`
+        email: faker.internet.email().toLowerCase()
       };
       const res = await auth.createAuthUser(obj);
 
       expect(res.status).toBe(false);
-      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PASSWORD_OR_PIN_NOT_PRESENT]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT]));
     });
   });
 
-  it('Delete user', async () => {
-    const auth = Auth.getInstance();
+  describe('User access checking tests', () => {
+    it('Check if user can access - OK 1', async () => {
+      const user = await insertAuthUser();
 
-    const obj = {
-      id: faker.datatype.number(10_000_000),
-      username: faker.internet.userName(),
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
-      password: faker.internet.password()
-    };
-    const user = await auth.createAuthUser(obj);
-    const success = await auth.deleteAuthUser(user.data.id);
-    delete obj.password;
+      const roleOne = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
 
-    expect(success.data).toEqual(expect.objectContaining(obj));
-    expect(success.data.status).toBe(DbModelStatus.DELETED);
+      const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.OWN },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
+      ]);
 
-    const noAuthUser = await auth.getAuthUserById(user.data.id);
-    expect(noAuthUser.status).toEqual(false);
-    expect(noAuthUser.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
-  });
+      const auth = Auth.getInstance();
+      await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
-  it('Login Email - OK', async () => {
-    const auth = Auth.getInstance();
+      const canAccess = await auth.canAccess(user.id, [
+        {
+          permission: 1,
+          type: PermissionType.EXECUTE,
+          level: PermissionLevel.OWN
+        },
+        {
+          permission: 2,
+          type: PermissionType.READ,
+          level: PermissionLevel.OWN
+        },
+        {
+          permission: 2,
+          type: PermissionType.WRITE,
+          level: PermissionLevel.OWN
+        }
+      ]);
 
-    const obj = {
-      id: faker.datatype.number(10_000_000),
-      username: faker.internet.userName(),
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
-      password: faker.internet.password()
-    };
-    const user = await auth.createAuthUser(obj);
-    const token = await auth.loginEmail(obj.email, obj.password);
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
+      expect(canAccess.data).toBe(true);
+    });
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 1
-        })
-      ])
-    );
+    it('Check if user can access - OK 2', async () => {
+      const user = await insertAuthUser();
 
-    const contents = jwt.decode(token.data);
-    expect(contents).toEqual(
-      expect.objectContaining({
-        userId: user.data.id,
-        sub: AuthJwtTokenType.USER_AUTHENTICATION
-      })
-    );
-  });
+      const roleOne = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
 
-  it('Login Email - Bad password', async () => {
-    const auth = Auth.getInstance();
+      const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
+      ]);
 
-    const obj = {
-      id: faker.datatype.number(10_000_000),
-      username: faker.internet.userName(),
-      email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
-      password: faker.internet.password()
-    };
-    const user = await auth.createAuthUser(obj);
-    const token = await auth.loginEmail(obj.email, 'badpassword');
-    const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-      `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
-    );
+      const auth = Auth.getInstance();
+      await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
-    expect(tokens.length).toBe(1);
-    expect(tokens).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          COUNT: 0
-        })
-      ])
-    );
+      const canAccess = await auth.canAccess(user.id, [
+        {
+          permission: 1,
+          type: PermissionType.EXECUTE,
+          level: PermissionLevel.OWN
+        },
+        {
+          permission: 2,
+          type: PermissionType.READ,
+          level: PermissionLevel.OWN
+        },
+        {
+          permission: 2,
+          type: PermissionType.WRITE,
+          level: PermissionLevel.OWN
+        }
+      ]);
 
-    expect(token.status).toEqual(false);
-    expect(token.errors).toEqual(expect.arrayContaining([AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]));
-  });
+      expect(canAccess.data).toBe(true);
+    });
 
-  it('Query should join permission actions', async () => {
-    const user = await insertAuthUser();
+    it('Check if user can access - OK 3', async () => {
+      const user = await insertAuthUser();
 
-    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
+      const roleOne = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
 
-    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.OWN },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
-    ]);
+      const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
+      ]);
 
-    const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
+      const auth = Auth.getInstance();
+      await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
-    const permissions = await auth.getAuthUserPermissions(user.id);
+      const canAccess = await auth.canAccess(user.id, [
+        {
+          permission: 1,
+          type: PermissionType.READ,
+          level: PermissionLevel.ALL
+        },
+        {
+          permission: 1,
+          type: PermissionType.EXECUTE,
+          level: PermissionLevel.ALL
+        }
+      ]);
 
-    expect(permissions.data.length).toBe(2);
-    expect(permissions).toEqual(
-      expect.objectContaining({
-        data: expect.arrayContaining([
-          expect.objectContaining({ permission_id: 1, read: 2, write: 0, execute: 1 }),
-          expect.objectContaining({ permission_id: 2, read: PermissionLevel.OWN, write: 1, execute: 0 })
-        ])
-      })
-    );
-  });
-  it('Check if user can access - OK 1', async () => {
-    const user = await insertAuthUser();
+      expect(canAccess.data).toBe(true);
+    });
 
-    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
+    it('Check if user can access - NOK', async () => {
+      const user = await insertAuthUser();
 
-    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.OWN },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
-    ]);
+      const roleOne = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
+      ]);
 
-    const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
+      const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
+        { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
+        { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
+      ]);
 
-    const canAccess = await auth.canAccess(user.id, [
-      {
-        permission: 1,
-        type: PermissionType.EXECUTE,
-        level: PermissionLevel.OWN
-      },
-      {
-        permission: 2,
-        type: PermissionType.READ,
-        level: PermissionLevel.OWN
-      },
-      {
-        permission: 2,
-        type: PermissionType.WRITE,
-        level: PermissionLevel.OWN
-      }
-    ]);
+      const auth = Auth.getInstance();
+      await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
 
-    expect(canAccess.data).toBe(true);
-  });
+      const canAccess = await auth.canAccess(user.id, [
+        {
+          permission: 1,
+          type: PermissionType.EXECUTE,
+          level: PermissionLevel.OWN
+        }
+      ]);
 
-  it('Check if user can access - OK 2', async () => {
-    const user = await insertAuthUser();
-
-    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-
-    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
-    ]);
-
-    const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
-
-    const canAccess = await auth.canAccess(user.id, [
-      {
-        permission: 1,
-        type: PermissionType.EXECUTE,
-        level: PermissionLevel.OWN
-      },
-      {
-        permission: 2,
-        type: PermissionType.READ,
-        level: PermissionLevel.OWN
-      },
-      {
-        permission: 2,
-        type: PermissionType.WRITE,
-        level: PermissionLevel.OWN
-      }
-    ]);
-
-    expect(canAccess.data).toBe(true);
-  });
-
-  it('Check if user can access - OK 3', async () => {
-    const user = await insertAuthUser();
-
-    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-
-    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
-    ]);
-
-    const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
-
-    const canAccess = await auth.canAccess(user.id, [
-      {
-        permission: 1,
-        type: PermissionType.READ,
-        level: PermissionLevel.ALL
-      },
-      {
-        permission: 1,
-        type: PermissionType.EXECUTE,
-        level: PermissionLevel.ALL
-      }
-    ]);
-
-    expect(canAccess.data).toBe(true);
-  });
-
-  it('Check if user can access - NOK', async () => {
-    const user = await insertAuthUser();
-
-    const roleOne = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.ALL, write: PermissionLevel.NONE, execute: PermissionLevel.NONE },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
-    ]);
-
-    const roleTwo = await insertRoleWithPermissions(faker.address.city(), [
-      { permission_id: 1, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.ALL },
-      { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.NONE, write: PermissionLevel.OWN, execute: PermissionLevel.NONE }
-    ]);
-
-    const auth = Auth.getInstance();
-    await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
-
-    const canAccess = await auth.canAccess(user.id, [
-      {
-        permission: 1,
-        type: PermissionType.EXECUTE,
-        level: PermissionLevel.OWN
-      }
-    ]);
-
-    expect(canAccess.data).toBe(true);
+      expect(canAccess.data).toBe(true);
+    });
   });
 
   describe('Login user with password and username/email tests', () => {
@@ -1385,7 +1692,7 @@ describe('Auth', () => {
       const obj = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = await auth.createAuthUser(obj);
@@ -1415,14 +1722,15 @@ describe('Auth', () => {
     it('Should not login user with its email and incorrect password', async () => {
       const auth = Auth.getInstance();
 
-      const obj = {
-        id: faker.datatype.number(10_000_000),
-        username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
-        password: faker.internet.password()
-      };
-      const user = await auth.createAuthUser(obj);
-      const token = await auth.loginEmail(obj.email, 'badpassword');
+      const user = (
+        await auth.createAuthUser({
+          id: faker.datatype.number(10_000_000),
+          username: faker.internet.userName(),
+          email: faker.internet.email().toLowerCase(),
+          password: faker.internet.password()
+        })
+      ).data;
+      const token = await auth.loginEmail(user.email, 'badpassword');
       const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
@@ -1446,7 +1754,7 @@ describe('Auth', () => {
       const obj = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
 
@@ -1480,7 +1788,7 @@ describe('Auth', () => {
       const obj = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = await auth.createAuthUser(obj);
@@ -1508,7 +1816,7 @@ describe('Auth', () => {
       const obj = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = await auth.createAuthUser(obj);
@@ -1539,7 +1847,7 @@ describe('Auth', () => {
       const obj = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = (await auth.createAuthUser(obj)).data;
@@ -1566,7 +1874,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
         })
       ).data;
@@ -1575,7 +1883,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
         })
       ).data;
@@ -1587,12 +1895,12 @@ describe('Auth', () => {
 
     it("Should change user's email", async () => {
       const auth = Auth.getInstance();
-      const newEmail = `${Math.floor(Math.random() * 10_000)}@domain-example.com`;
+      const newEmail = faker.internet.email().toLowerCase();
 
       const obj = {
         id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
-        email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+        email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = (await auth.createAuthUser(obj)).data;
@@ -1619,7 +1927,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
         })
       ).data;
@@ -1628,7 +1936,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
         })
       ).data;
@@ -1649,7 +1957,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: currentPassword
         })
       ).data;
@@ -1668,7 +1976,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: currentPassword
         })
       ).data;
@@ -1687,7 +1995,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: currentPassword
         })
       ).data;
@@ -1706,7 +2014,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: faker.internet.password(),
           PIN: '1234'
         })
@@ -1747,7 +2055,7 @@ describe('Auth', () => {
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
-          email: `${Math.floor(Math.random() * 10_000)}@domain-example.com`,
+          email: faker.internet.email().toLowerCase(),
           password: faker.internet.password(),
           PIN: '1234'
         })

@@ -1,14 +1,19 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
-import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
-import { Pool } from 'mysql2/promise';
+import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { AuthDbTables } from '../../config/types';
 import * as jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
 
+/**
+ * JWT token model.
+ */
 export class Token extends BaseModel {
+  /**
+   * Tokens database table.
+   */
   tableName = AuthDbTables.TOKENS;
 
   /**
@@ -81,9 +86,11 @@ export class Token extends BaseModel {
       if (!exp) {
         exp = '1d';
       }
+
       if (!this.user_id) {
         this.user_id = null;
       }
+
       this.token = jwt.sign(
         {
           ...this.payload,
@@ -96,15 +103,15 @@ export class Token extends BaseModel {
         }
       );
 
-      // get expiration date
+      // Get expiration date.
       const payload: any = jwt.decode(this.token);
       this.expiresAt = new Date(payload.exp * 1000 + Math.floor(Math.random() * 500));
 
-      // insert token into database
+      // Insert token into database.
       const createQuery = `INSERT INTO \`${this.tableName}\` (token, status, user_id, subject, expiresAt)
       VALUES
         (@token, @status, @user_id, @subject, @expiresAt)`;
-      const sqlUtil = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
+      const sqlUtil = new MySqlUtil(await this.db());
       const conn = await sqlUtil.start();
       await sqlUtil.paramExecute(
         createQuery,
@@ -119,6 +126,7 @@ export class Token extends BaseModel {
       );
       const req = await sqlUtil.paramExecute('SELECT last_insert_id() AS id;', null, conn);
       this.id = req[0].id;
+
       await sqlUtil.commit(conn);
       return this.token;
     } catch (e) {
@@ -141,7 +149,7 @@ export class Token extends BaseModel {
       this.subject = this.payload.sub;
       delete this.payload.sub;
 
-      const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const data = await new MySqlUtil(await this.db()).paramExecute(
         `
         SELECT t.token, t.user_id, t.status, t.subject, t.expiresAt
         FROM \`${this.tableName}\` t
@@ -168,7 +176,7 @@ export class Token extends BaseModel {
    * @param token Token's token.
    */
   public async populateByToken(token: string): Promise<this> {
-    const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+    const data = await new MySqlUtil(await this.db()).paramExecute(
       `
       SELECT * FROM ${this.tableName}
       WHERE token = @token
@@ -188,7 +196,7 @@ export class Token extends BaseModel {
    * @returns boolean, whether the operation was successful or not.
    */
   public async invalidateToken(): Promise<boolean> {
-    const sqlUtil = new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool);
+    const sqlUtil = new MySqlUtil(await this.db());
     const conn = await sqlUtil.start();
 
     try {
@@ -236,7 +244,7 @@ export class Token extends BaseModel {
             AND (@userId IS NULL OR t.user_id = @userId)
         `;
 
-        const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(query, {
+        const data = await new MySqlUtil(await this.db()).paramExecute(query, {
           token: this.token,
           userId
         });

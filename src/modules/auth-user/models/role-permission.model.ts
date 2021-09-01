@@ -21,21 +21,14 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-      SerializeFor.INSERT_DB
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_PERMISSION_ROLE_ID_NOT_PRESENT,
-      },
-    ],
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_ROLE_ID_NOT_PRESENT
+      }
+    ]
   })
   public role_id: number;
 
@@ -44,70 +37,45 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-      SerializeFor.INSERT_DB
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_PERMISSION_PERMISSION_ID_NOT_PRESENT,
-      },
-    ],
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_PERMISSION_ID_NOT_PRESENT
+      }
+    ]
   })
   public permission_id: number;
-
 
   /**
    * Role permission's name property definition.
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN,
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-      SerializeFor.INSERT_DB,
-      SerializeFor.UPDATE_DB,
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_PERMISSION_NAME_NOT_PRESENT,
-      },
-    ],
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_NAME_NOT_PRESENT
+      }
+    ]
   })
   public name: string;
-
 
   /**
    * Role permission's read property definition. Represents level of read access.
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-      SerializeFor.INSERT_DB,
-      SerializeFor.UPDATE_DB
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_SET,
-      },
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_SET
+      }
     ],
     fakeValue: () => PermissionLevel.ALL,
     defaultValue: () => PermissionLevel.NONE
@@ -119,21 +87,13 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-      SerializeFor.INSERT_DB,
-      SerializeFor.UPDATE_DB
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_SET,
-      },
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_SET
+      }
     ],
     fakeValue: () => PermissionLevel.ALL,
     defaultValue: () => PermissionLevel.NONE
@@ -145,21 +105,13 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [
-      PopulateFor.DB,
-      PopulateFor.ADMIN
-    ],
-    serializable: [
-      SerializeFor.PROFILE,
-      SerializeFor.ADMIN,
-      SerializeFor.INSERT_DB,
-      SerializeFor.UPDATE_DB
-    ],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_SET,
-      },
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_SET
+      }
     ],
     fakeValue: () => PermissionLevel.ALL,
     defaultValue: () => PermissionLevel.NONE
@@ -174,9 +126,8 @@ export class RolePermission extends BaseModel {
    * Tells if the model represents a document stored in the database.
    */
   public exists(): boolean {
-    return !!this.role_id && !!this.permission_id && (this.status !== DbModelStatus.DELETED);
+    return !!this.role_id && !!this.permission_id && this.status !== DbModelStatus.DELETED;
   }
-
 
   /**
    * Tells whether a role permission meets or exceeds a certain permission requirement.
@@ -184,9 +135,7 @@ export class RolePermission extends BaseModel {
    * @returns boolean, whether role permission has required permission
    */
   public hasPermission(pass: PermissionPass): boolean {
-    return pass.permission === this.permission_id &&
-      this[pass.type] &&
-      (!pass.level || pass.level <= this[pass.type]);
+    return pass.permission === this.permission_id && this[pass.type] && (!pass.level || pass.level <= this[pass.type]);
   }
 
   /**
@@ -194,7 +143,7 @@ export class RolePermission extends BaseModel {
    * @returns Promise<boolean>
    */
   public async existsInDb(): Promise<boolean> {
-    const data = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as mysql.Pool).paramQuery(
+    const data = await new MySqlUtil(await this.db()).paramExecute(
       `
       SELECT * FROM ${this.tableName}
       WHERE role_id = @role_id
@@ -208,5 +157,4 @@ export class RolePermission extends BaseModel {
     }
     return false;
   }
-
 }

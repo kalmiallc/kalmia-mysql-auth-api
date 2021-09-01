@@ -2,24 +2,23 @@ import { Migrations, MySqlConnManager } from 'kalmia-sql-lib';
 import * as mysql from 'mysql2/promise';
 import * as path from 'path';
 
-// dotenv.config({ path: '.env.testing' });
-
 /**
- * Default stage object.
- * Import this object to gain access to application context after calling one of the init functions.
+ * Connects to database.
+ * @returns Database connection.
  */
-
 export const connectToDb = async (): Promise<mysql.Pool | mysql.Connection> => {
-  const dbConn = await MySqlConnManager.getInstance().getConnection();
-  const migPath = path.join(__dirname, '..', '..', 'migration-scripts', 'migrations');
-  const migs = new Migrations();
-  await migs.init({
-    path: migPath,
+  const conn = await MySqlConnManager.getInstance().getConnection();
+  const migrationsPath = path.join(__dirname, '..', '..', 'migration-scripts', 'migrations');
+
+  const migrations = new Migrations();
+  await migrations.init({
+    path: migrationsPath,
     tableName: 'auth_migrations',
-    silent: true,
+    silent: true
   });
-  await migs.setup();
-  return dbConn;
+  await migrations.setup();
+
+  return conn;
 };
 
 /**
@@ -33,12 +32,13 @@ export const closeConnectionToDb = async (): Promise<void> => {
  * Cleans database.
  */
 export const cleanDatabase = async (): Promise<void> => {
-  const migPath = path.join(__dirname, '..', '..', 'migration-scripts', 'migrations');
-  const migs = new Migrations();
-  await migs.init({
-    path: migPath,
+  const migrationsPath = path.join(__dirname, '..', '..', 'migration-scripts', 'migrations');
+
+  const migrations = new Migrations();
+  await migrations.init({
+    path: migrationsPath,
     tableName: 'auth_migrations',
-    silent: true,
+    silent: true
   });
-  await migs.clear();
+  await migrations.clear();
 };

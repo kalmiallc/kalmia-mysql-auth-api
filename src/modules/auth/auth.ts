@@ -1,9 +1,7 @@
 import { MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
-import { Pool } from 'mysql2/promise';
 import { AuthUser } from '../..';
 import {
   AuthAuthenticationErrorCode,
-  AuthDbTables,
   AuthBadRequestErrorCode,
   AuthJwtTokenType,
   AuthResourceNotFoundErrorCode,
@@ -105,6 +103,7 @@ export class Auth {
             errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
           };
         }
+
         if (await user.hasRole(role.id, conn)) {
           await sql.rollback(conn);
 
@@ -387,48 +386,31 @@ export class Auth {
 
   /**
    * Deletes a role. Also deletes it from all users and removes all the role's permissions.
-   * @param name Name of the role to delete.
-   * @returns boolean, whether operation was successful
+   * @param roleId ID of the role to be deleted.
+   * @returns Deleted role.
    */
-  async deleteRole(name: string): Promise<IAuthResponse<boolean>> {
-    const conn = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).start();
-    const mySqlHelper = new MySqlUtil(conn);
+  async deleteRole(roleId: number): Promise<IAuthResponse<Role>> {
+    const role = await new Role().populateById(roleId);
+    if (!role.exists()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
+      };
+    }
+
     try {
-      const queryUserRoles = `
-        DELETE ur
-        FROM ${AuthDbTables.USER_ROLES} ur
-        JOIN ${AuthDbTables.ROLES} r
-          ON ur.role_id = r.id
-        WHERE r.name = @name
-        `;
-      const dataUserRoles = await mySqlHelper.paramExecute(queryUserRoles, { name }, conn);
-
-      const queryRolePermissions = `
-        DELETE rp
-        FROM ${AuthDbTables.ROLE_PERMISSIONS} rp
-        JOIN ${AuthDbTables.ROLES} r
-          ON rp.role_id = r.id
-        WHERE r.name = @name
-      `;
-      const dataRolePermissions = await mySqlHelper.paramExecute(queryRolePermissions, { name }, conn);
-
-      const queryRole = `
-        DELETE FROM ${AuthDbTables.ROLES}
-        WHERE name = @name
-      `;
-      const dataRole = await mySqlHelper.paramExecute(queryRole, { name }, conn);
-      await new MySqlUtil(conn).commit(conn);
+      await role.delete();
     } catch (error) {
-      await new MySqlUtil(conn).rollback(conn);
       return {
         status: false,
         errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
         details: error
       };
     }
+
     return {
       status: true,
-      data: true
+      data: role
     };
   }
 
@@ -452,7 +434,10 @@ export class Auth {
     const rolePermissions: RolePermission[] = [];
     try {
       for (const permission of permissions) {
-        const rolePermission = new RolePermission({ role_id: role.id }).populate(permission);
+        const rolePermission = new RolePermission({
+          ...permission,
+          role_id: role.id
+        });
 
         if (!(await rolePermission.existsInDb())) {
           await rolePermission.create({ conn });
@@ -557,8 +542,7 @@ export class Auth {
    * @returns Authentication JWT
    */
   async loginEmail(email: string, password: string): Promise<IAuthResponse<string>> {
-    const user: AuthUser = await new AuthUser({}).populateByEmail(email);
-
+    const user = await new AuthUser({}).populateByEmail(email);
     if (!user.exists()) {
       return {
         status: false,
@@ -583,8 +567,7 @@ export class Auth {
    * @returns Authentication JWT
    */
   async loginUsername(username: string, password: string): Promise<IAuthResponse<string>> {
-    const user: AuthUser = await new AuthUser({}).populateByUsername(username);
-
+    const user = await new AuthUser({}).populateByUsername(username);
     if (!user.exists()) {
       return {
         status: false,
@@ -628,7 +611,7 @@ export class Auth {
    * @returns AuthUser.
    */
   async createAuthUser(data: IAuthUser): Promise<IAuthResponse<AuthUser>> {
-    const user: AuthUser = new AuthUser(data);
+    const user = new AuthUser(data);
     if ((data as any).password) {
       user.setPassword((data as any).password);
     }
@@ -668,8 +651,15 @@ export class Auth {
    * @returns updated auth user with deleted status
    */
   async deleteAuthUser(userId: any): Promise<IAuthResponse<AuthUser>> {
+    const user = await new AuthUser().populateById(userId);
+    if (!user.exists()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+      };
+    }
+
     try {
-      const user = await new AuthUser().populateById(userId);
       await user.delete();
 
       return {

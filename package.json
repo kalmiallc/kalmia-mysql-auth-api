@@ -34,9 +34,11 @@
   "homepage": "https://bitbucket.org/kalmiadevs/kalmia-mysql-auth-api#readme",
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
+    "@types/faker": "^5.5.8",
     "@types/jest": "^26.0.24",
     "@types/jsonwebtoken": "^8.5.4",
     "@types/node": "^16.4.4",
+    "@types/uuid": "^8.3.1",
     "@typescript-eslint/eslint-plugin": "^4.28.5",
     "@typescript-eslint/parser": "^4.28.5",
     "cross-env": "^7.0.3",
@@ -66,7 +68,7 @@
     "@rawmodel/core": "^3.3.4",
     "@rawmodel/parsers": "^3.3.4",
     "@rawmodel/validators": "^3.3.4",
-    "mysql2": "^2.2.5",
-    "dotenv": "^10.0.0"
+    "dotenv": "^10.0.0",
+    "mysql2": "^2.2.5"
   }
 }

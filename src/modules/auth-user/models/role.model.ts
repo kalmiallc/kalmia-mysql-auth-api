@@ -6,13 +6,13 @@ import {
   BaseModel,
   DbModelStatus,
   getQueryParams,
-  MySqlConnManager,
   MySqlUtil,
   PopulateFor,
   selectAndCountQuery,
-  SerializeFor
+  SerializeFor,
+  uniqueFieldWithIdValidator
 } from 'kalmia-sql-lib';
-import { Pool, PoolConnection } from 'mysql2/promise';
+import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 import { RolePermission } from './role-permission.model';
@@ -24,7 +24,7 @@ export class Role extends BaseModel {
   /**
    * Roles table.
    */
-  tableName: AuthDbTables = AuthDbTables.ROLES;
+  tableName = AuthDbTables.ROLES;
 
   /**
    * Role's id property definition.
@@ -47,6 +47,10 @@ export class Role extends BaseModel {
       {
         resolver: presenceValidator(),
         code: AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT
+      },
+      {
+        resolver: uniqueFieldWithIdValidator(AuthDbTables.ROLES, 'name'),
+        code: AuthValidatorErrorCode.ROLE_NAME_ALREADY_TAKEN
       }
     ]
   })
@@ -86,7 +90,7 @@ export class Role extends BaseModel {
    */
   public async getRolePermissions(conn?: PoolConnection): Promise<this> {
     this.rolePermissions = [];
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    const rows = await new MySqlUtil(await this.db()).paramExecute(
       `
       SELECT 
         rp.*
@@ -98,12 +102,17 @@ export class Role extends BaseModel {
       conn
     );
 
-    for (const rp of res) {
-      let rolePermission = this.rolePermissions.find((x) => x.id === rp.id);
-      if (!rolePermission) {
-        rolePermission = new RolePermission({}).populate(rp, PopulateFor.DB);
-        this.rolePermissions = [...this.rolePermissions, rolePermission];
-      }
+    for (const row of rows) {
+      this.rolePermissions = [
+        ...this.rolePermissions,
+        new RolePermission({}).populate(
+          {
+            ...row,
+            id: null
+          },
+          PopulateFor.DB
+        )
+      ];
     }
 
     return this;
@@ -115,7 +124,7 @@ export class Role extends BaseModel {
    * @param name Role's name.
    */
   public async populateByName(name: string): Promise<this> {
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    const res = await new MySqlUtil(await this.db()).paramExecute(
       `
         SELECT * FROM ${this.tableName}
         WHERE name = @name
@@ -257,25 +266,22 @@ export class Role extends BaseModel {
         roles = [...roles, role];
       }
 
-      let permission = role.rolePermissions.find((rp) => rp.permission_id === row.permission_id);
-      if (!permission) {
-        permission = new RolePermission({}).populate(
-          {
-            ...row,
-            ...(row.rpName ? { name: row.rpName } : { name: null }),
-            ...(row.rpStatus ? { status: row.rpStatus } : { status: null }),
-            ...(row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null }),
-            ...(row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null }),
-            ...(row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null }),
-            ...(row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null }),
-            id: null
-          },
-          PopulateFor.DB
-        );
+      const permission = new RolePermission({}).populate(
+        {
+          ...row,
+          ...(row.rpName ? { name: row.rpName } : { name: null }),
+          ...(row.rpStatus ? { status: row.rpStatus } : { status: null }),
+          ...(row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null }),
+          ...(row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null }),
+          ...(row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null }),
+          ...(row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null }),
+          id: null
+        },
+        PopulateFor.DB
+      );
 
-        if (permission.exists()) {
-          role.rolePermissions = [...role.rolePermissions, permission];
-        }
+      if (permission.exists()) {
+        role.rolePermissions = [...role.rolePermissions, permission];
       }
     }
 
@@ -283,5 +289,51 @@ export class Role extends BaseModel {
       items: roles,
       total: res.total
     };
+  }
+
+  /**
+   * Hard deletes role, its role permissions and user roles from the database.
+   * @param options Delete options.
+   * @returns Deleted role (this).
+   */
+  public async delete(options: { conn?: PoolConnection } = {}) {
+    const { singleTrans, sql, conn } = await this.getDbConnection(options.conn);
+
+    try {
+      const deleteUserRoles = `
+        DELETE ur
+        FROM ${AuthDbTables.USER_ROLES} ur
+        JOIN ${AuthDbTables.ROLES} r
+          ON ur.role_id = r.id
+        WHERE r.id = @roleId
+        `;
+      await sql.paramExecute(deleteUserRoles, { roleId: this.id }, conn);
+
+      const deleteRolePermissions = `
+        DELETE rp
+        FROM ${AuthDbTables.ROLE_PERMISSIONS} rp
+        JOIN ${AuthDbTables.ROLES} r
+          ON rp.role_id = r.id
+        WHERE r.id = @roleId
+      `;
+      await sql.paramExecute(deleteRolePermissions, { roleId: this.id }, conn);
+
+      const deleteRole = `
+        DELETE FROM ${AuthDbTables.ROLES}
+        WHERE id = @roleId
+      `;
+      await sql.paramExecute(deleteRole, { roleId: this.id }, conn);
+
+      if (singleTrans) {
+        await sql.commit(conn);
+      }
+    } catch (error) {
+      if (singleTrans) {
+        await sql.rollback(conn);
+      }
+      throw new Error(error);
+    }
+
+    return this;
   }
 }

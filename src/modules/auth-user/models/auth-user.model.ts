@@ -4,32 +4,30 @@ import { integerParser, stringParser } from '@rawmodel/parsers';
 import { isPresent } from '@rawmodel/utils';
 import { emailValidator, presenceValidator, stringLengthValidator } from '@rawmodel/validators';
 import * as bcrypt from 'bcryptjs';
-import { PoolConnection, Pool } from 'mysql2/promise';
+import { PoolConnection } from 'mysql2/promise';
 import { Role } from './role.model';
 import { RolePermission } from './role-permission.model';
-import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
+import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldValidator, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 
 /**
- * Conditional presence validator based on ID property.
+ * Validates uniqueness of the ID field if model was not created yet.
+ * @returns boolean
  */
-const passwordHashConditionalPresenceValidator = (fieldNames: string[]) =>
-  async function (this: AuthUser, value: any) {
-    if (this.id) {
-      let fieldIsPresent = false;
-      for (const fieldName of fieldNames) {
-        if (isPresent(this[fieldName])) {
-          fieldIsPresent = true;
-          break;
-        }
-      }
-      return fieldIsPresent;
+const conditionalIdUniqueFieldValidator = () =>
+  async function (this: AuthUser, value: any): Promise<boolean> {
+    if (!isPresent(this._createTime)) {
+      return uniqueFieldValidator(AuthDbTables.USERS, 'id')(value);
     }
     return true;
   };
 
+/**
+ * Generates random digit - used for PIN number generation.
+ * @returns Random digit.
+ */
 function getRandomDigit() {
   return Math.floor(Math.random() * 10);
 }
@@ -56,7 +54,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_ID_NOT_PRESENT
       },
       {
-        resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'id'),
+        resolver: conditionalIdUniqueFieldValidator(),
         code: AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
       }
     ],
@@ -131,8 +129,8 @@ export class AuthUser extends BaseModel {
     populatable: [PopulateFor.DB],
     validators: [
       {
-        resolver: passwordHashConditionalPresenceValidator(['passwordHash', 'PIN']),
-        code: AuthValidatorErrorCode.USER_PASSWORD_OR_PIN_NOT_PRESENT
+        resolver: presenceValidator(),
+        code: AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT
       }
     ],
     fakeValue: () => bcrypt.hashSync('Password123', bcrypt.genSaltSync(10))
@@ -210,7 +208,7 @@ export class AuthUser extends BaseModel {
    */
   public async populateByEmail(email: string, populateRoles: boolean = false) {
     email = email.toLowerCase().replace(/\s/g, '');
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    const res = await new MySqlUtil(await this.db()).paramExecute(
       `
         SELECT * FROM ${this.tableName}
         WHERE email = @email
@@ -225,7 +223,6 @@ export class AuthUser extends BaseModel {
     this.populate(res[0]);
     if (populateRoles) {
       await this.populateRoles();
-      await this.populatePermissions();
     }
 
     return this;
@@ -237,7 +234,7 @@ export class AuthUser extends BaseModel {
    * @param username User's username.
    */
   public async populateByUsername(username: string, populateRoles: boolean = false) {
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    const res = await new MySqlUtil(await this.db()).paramExecute(
       `
           SELECT * FROM ${this.tableName}
           WHERE username = @username
@@ -252,7 +249,6 @@ export class AuthUser extends BaseModel {
     this.populate(res[0]);
     if (populateRoles) {
       await this.populateRoles();
-      await this.populatePermissions();
     }
 
     return this;
@@ -264,7 +260,7 @@ export class AuthUser extends BaseModel {
    * @param pin User's PIN number.
    */
   public async populateByPin(pin: string, populateRoles: boolean = false) {
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    const res = await new MySqlUtil(await this.db()).paramExecute(
       `
             SELECT * FROM ${this.tableName}
             WHERE PIN = @pin
@@ -279,7 +275,6 @@ export class AuthUser extends BaseModel {
     this.populate(res[0]);
     if (populateRoles) {
       await this.populateRoles();
-      await this.populatePermissions();
     }
 
     return this;
@@ -298,7 +293,6 @@ export class AuthUser extends BaseModel {
 
     if (populateRoles) {
       await this.populateRoles();
-      await this.populatePermissions();
     }
 
     return this;
@@ -336,7 +330,7 @@ export class AuthUser extends BaseModel {
    * @param roleId Role's id.
    */
   public async addRole(roleId: number, conn?: PoolConnection, populateRoles: boolean = true): Promise<AuthUser> {
-    await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    await new MySqlUtil(await this.db()).paramExecute(
       `
       INSERT IGNORE INTO ${AuthDbTables.USER_ROLES} (user_id, role_id)
       VALUES (@userId, @roleId)
@@ -376,7 +370,9 @@ export class AuthUser extends BaseModel {
    */
   public async populateRoles(conn?: PoolConnection): Promise<AuthUser> {
     this.roles = [];
-    const rows = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    this.permissions = [];
+
+    const rows = await new MySqlUtil(await this.db()).paramExecute(
       `
       SELECT 
         r.*, 
@@ -394,7 +390,7 @@ export class AuthUser extends BaseModel {
       FROM ${AuthDbTables.ROLES} r
       JOIN ${AuthDbTables.USER_ROLES} ur
         ON ur.role_id = r.id
-      JOIN ${AuthDbTables.ROLE_PERMISSIONS} rp
+      LEFT JOIN ${AuthDbTables.ROLE_PERMISSIONS} rp
         ON rp.role_id = r.id
       WHERE ur.user_id = @userId
         AND r.status < ${DbModelStatus.DELETED}
@@ -410,25 +406,23 @@ export class AuthUser extends BaseModel {
         role = new Role().populate(row, PopulateFor.DB);
         this.roles = [...this.roles, role];
       }
-      let permission = role.rolePermissions.find((x) => x.permission_id == row.permission_id);
-      if (!permission) {
-        permission = new RolePermission({}).populate(
-          {
-            ...row,
-            ...(row.rpName ? { name: row.rpName } : { name: null }),
-            ...(row.rpStatus ? { status: row.rpStatus } : { status: null }),
-            ...(row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null }),
-            ...(row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null }),
-            ...(row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null }),
-            ...(row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null }),
-            id: null
-          },
-          PopulateFor.DB
-        );
+      const permission = new RolePermission({}).populate(
+        {
+          ...row,
+          ...(row.rpName ? { name: row.rpName } : { name: null }),
+          ...(row.rpStatus ? { status: row.rpStatus } : { status: null }),
+          ...(row.rpCreateTime ? { _createTime: row.rpCreateTime } : { _createTime: null }),
+          ...(row.rpUpdateTime ? { _updateTime: row.rpUpdateTime } : { _updateTime: null }),
+          ...(row.rpCreateUser ? { _createUser: row.rpCreateUser } : { _createUser: null }),
+          ...(row.rpUpdateUser ? { _updateUser: row.rpUpdateUser } : { _updateUser: null }),
+          id: null
+        },
+        PopulateFor.DB
+      );
 
-        if (permission.exists()) {
-          role.rolePermissions = [...role.rolePermissions, permission];
-        }
+      if (permission.exists()) {
+        role.rolePermissions = [...role.rolePermissions, permission];
+        this.permissions = [...this.permissions, permission];
       }
     }
 
@@ -442,7 +436,7 @@ export class AuthUser extends BaseModel {
    */
   public async populatePermissions(conn?: PoolConnection): Promise<AuthUser> {
     this.permissions = [];
-    const res = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
+    const rows = await new MySqlUtil(await this.db()).paramExecute(
       `
       SELECT
         rp.permission_id,
@@ -464,12 +458,9 @@ export class AuthUser extends BaseModel {
       conn
     );
 
-    for (const p of res) {
-      let permission = this.permissions.find((x) => x.id === p.id);
-      if (!permission) {
-        permission = new RolePermission({}).populate(p, PopulateFor.DB);
-        this.permissions = [...this.permissions, permission];
-      }
+    for (const row of rows) {
+      const permission = new RolePermission({}).populate(row, PopulateFor.DB);
+      this.permissions = [...this.permissions, permission];
     }
 
     return this;
@@ -491,7 +482,7 @@ export class AuthUser extends BaseModel {
       }
     }
 
-    await new MySqlUtil(await MySqlConnManager.getInstance().getConnection()).paramQuery(
+    await new MySqlUtil(await this.db()).paramExecute(
       `
       UPDATE \`${this.tableName}\`
       SET
@@ -523,7 +514,7 @@ export class AuthUser extends BaseModel {
     let mySqlHelper: MySqlUtil;
     if (!options.conn) {
       isSingleTrans = true;
-      const pool = (await MySqlConnManager.getInstance().getConnection()) as PoolConnection;
+      const pool = await this.db();
       mySqlHelper = new MySqlUtil(pool);
     }
 
@@ -555,11 +546,13 @@ export class AuthUser extends BaseModel {
         this._updateTime = this._createTime;
         await mySqlHelper.commit(options.conn);
       }
-    } catch (err) {
+    } catch (error) {
+      console.log(error);
+
       if (isSingleTrans) {
         await mySqlHelper.rollback(options.conn);
       }
-      throw new Error(err);
+      throw new Error(error);
     }
 
     return this;
