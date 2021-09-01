@@ -22,7 +22,6 @@ import { AuthUser } from '../../..';
 describe('Auth service tests', () => {
   beforeEach(async () => {
     await connectToDb();
-    await cleanDatabase();
   });
 
   afterEach(async () => {
