@@ -19,6 +19,7 @@ import { insertRoleWithPermissions } from '../../test-helpers/permission';
 import { Role } from '../../auth-user/models/role.model';
 import { AuthUser } from '../../..';
 import { RolePermission } from '../../auth-user/models/role-permission.model';
+import { env } from '../../../config/env';
 
 describe('Auth service tests', () => {
   beforeEach(async () => {
@@ -624,7 +625,7 @@ describe('Auth service tests', () => {
   });
 
   describe('Validate JWT token tests', () => {
-    it('Should validate JWT token', async () => {
+    it('Should validate JWT token - Should succeed', async () => {
       const user = await insertAuthUser();
       const auth = Auth.getInstance();
       const obj = {
@@ -656,7 +657,7 @@ describe('Auth service tests', () => {
       expect(isValid.data).toEqual(expect.objectContaining(obj));
     });
 
-    it('Validate JWT token - 2 (FALSE)', async () => {
+    it('Validate JWT token - Should fail due to token being invalidated', async () => {
       const user = await insertAuthUser();
       const auth = Auth.getInstance();
       const obj = {
@@ -691,7 +692,7 @@ describe('Auth service tests', () => {
       expect(validation.errors).toEqual(expect.arrayContaining([AuthAuthenticationErrorCode.INVALID_TOKEN]));
     });
 
-    it('Validate JWT token - 3 (FALSE)', async () => {
+    it('Validate JWT token - Should fail due to mis-matched JWT encoding secret', async () => {
       const user = await insertAuthUser();
       const auth = Auth.getInstance();
       const obj = {
@@ -718,15 +719,11 @@ describe('Auth service tests', () => {
         ])
       );
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
-        `SELECT * FROM ${AuthDbTables.TOKENS};`
-      );
-
       const isValid = await auth.validateToken(differentSecretToken, AuthJwtTokenType.USER_SIGN_UP);
       expect(!!isValid.data).toBe(false);
     });
 
-    it('Validate JWT token - 4 (FALSE)', async () => {
+    it('Validate JWT token - Should fail due to token not being present in database', async () => {
       const auth = Auth.getInstance();
       const obj = {
         name: 'person',
@@ -734,7 +731,7 @@ describe('Auth service tests', () => {
         email: faker.internet.email().toLowerCase()
       };
 
-      const differentSecretToken = jwt.sign(obj, 'badsecret', {
+      const differentSecretToken = jwt.sign(obj, env.APP_SECRET, {
         subject: AuthJwtTokenType.USER_SIGN_UP,
         expiresIn: '1d'
       });
@@ -743,7 +740,7 @@ describe('Auth service tests', () => {
       expect(!!isValid.data).toBe(false);
     });
 
-    it('Validate JWT token - 5 (FALSE)', async () => {
+    it('Validate JWT token - Should fail due to token expiring according to database time', async () => {
       const user = await insertAuthUser();
       const auth = Auth.getInstance();
       const obj = {
@@ -777,13 +774,13 @@ describe('Auth service tests', () => {
       expect(!!isValid.data).toBe(false);
     });
 
-    it('Validate JWT token - 6 (FALSE)', async () => {
+    it('Validate JWT token - Should fail due to bad token', async () => {
       const auth = Auth.getInstance();
       const isValid = await auth.validateToken('badtoken', AuthJwtTokenType.USER_SIGN_UP);
       expect(!!isValid.data).toBe(false);
     });
 
-    it('Validate JWT token - 7 (TRUE)', async () => {
+    it('Validate JWT token - Should succeed', async () => {
       const user = await insertAuthUser();
       const auth = Auth.getInstance();
       const obj = {
@@ -815,7 +812,7 @@ describe('Auth service tests', () => {
       expect(isValid.data).toEqual(expect.objectContaining(obj));
     });
 
-    it('Validate JWT token - 8 (FALSE)', async () => {
+    it('Validate JWT token - Should fail due to missing userId', async () => {
       const user = await insertAuthUser();
       const auth = Auth.getInstance();
       const obj = {
@@ -846,7 +843,7 @@ describe('Auth service tests', () => {
       expect(isValid.status).toBe(false);
     });
 
-    it('Validate JWT token - 9 (FALSE)', async () => {
+    it('Validate JWT token -  Should fail due to mis-matched userId', async () => {
       const user = await insertAuthUser();
       const auth = Auth.getInstance();
       const obj = {
@@ -1827,7 +1824,7 @@ describe('Auth service tests', () => {
   });
 
   describe('User access checking tests', () => {
-    it('Check if user can access - OK 1', async () => {
+    it('Check if user can access - Should succeed - Different roles fit all permission requirements 1', async () => {
       const user = await insertAuthUser();
 
       const roleOne = await insertRoleWithPermissions(faker.address.city(), [
@@ -1864,7 +1861,7 @@ describe('Auth service tests', () => {
       expect(canAccess.data).toBe(true);
     });
 
-    it('Check if user can access - OK 2', async () => {
+    it('Check if user can access - Should succeed - Different roles fit all permission requirements 2', async () => {
       const user = await insertAuthUser();
 
       const roleOne = await insertRoleWithPermissions(faker.address.city(), [
@@ -1901,7 +1898,7 @@ describe('Auth service tests', () => {
       expect(canAccess.data).toBe(true);
     });
 
-    it('Check if user can access - OK 3', async () => {
+    it('Check if user can access - Should succeed - Different roles fit all permission requirements 3', async () => {
       const user = await insertAuthUser();
 
       const roleOne = await insertRoleWithPermissions(faker.address.city(), [
@@ -1933,7 +1930,7 @@ describe('Auth service tests', () => {
       expect(canAccess.data).toBe(true);
     });
 
-    it('Check if user can access - NOK', async () => {
+    it('Check if user can access - Should fail due to insufficient permissions', async () => {
       const user = await insertAuthUser();
 
       const roleOne = await insertRoleWithPermissions(faker.address.city(), [
