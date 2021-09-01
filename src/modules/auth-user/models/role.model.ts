@@ -88,7 +88,7 @@ export class Role extends BaseModel {
    * @param conn (optional) database connection.
    * @returns Same instance with freshly populated role permissions.
    */
-  public async getRolePermissions(conn?: PoolConnection): Promise<this> {
+  public async populatePermissions(conn?: PoolConnection): Promise<this> {
     this.rolePermissions = [];
     const rows = await new MySqlUtil(await this.db()).paramExecute(
       `
@@ -136,7 +136,7 @@ export class Role extends BaseModel {
       return this.reset();
     }
     this.populate(res[0]);
-    await this.getRolePermissions();
+    await this.populatePermissions();
     return this;
   }
 
@@ -159,7 +159,7 @@ export class Role extends BaseModel {
       return this.reset();
     }
     this.populate(res[0]);
-    await this.getRolePermissions(conn);
+    await this.populatePermissions(conn);
     return this;
   }
 

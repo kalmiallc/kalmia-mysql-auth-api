@@ -18,6 +18,6 @@ export async function insertRoleWithPermissions(roleName: string, permissions: I
     }
   }
 
-  await role.getRolePermissions();
+  await role.populatePermissions();
   return role;
 }

@@ -1,4 +1,4 @@
-import { MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
+import { MySqlConnManager, MySqlUtil, PopulateFor } from 'kalmia-sql-lib';
 import { AuthUser } from '../..';
 import {
   AuthAuthenticationErrorCode,
@@ -7,13 +7,11 @@ import {
   AuthResourceNotFoundErrorCode,
   AuthSystemErrorCode
 } from '../../config/types';
-import { PermissionPass } from './interfaces/permission-pass.interface';
 import { IAuthUser } from '../auth-user/interfaces/auth-user.interface';
 import { RolePermission } from '../auth-user/models/role-permission.model';
 import { Role } from '../auth-user/models/role.model';
 import { Token } from '../token/token.model';
-import { IAuthResponse } from './interfaces/auth-response.interface';
-import { INewPermission } from './interfaces/new-permission.interface';
+import { IAuthResponse, INewPermission, IUpdatePermission, PermissionPass } from './interfaces';
 
 /**
  * Authorization service.
@@ -439,6 +437,21 @@ export class Auth {
           role_id: role.id
         });
 
+        try {
+          await rolePermission.validate();
+        } catch (error) {
+          await rolePermission.handle(error);
+        }
+
+        if (!rolePermission.isValid()) {
+          await sql.rollback(conn);
+
+          return {
+            status: false,
+            errors: rolePermission.collectErrors().map((x) => x.code)
+          };
+        }
+
         if (!(await rolePermission.existsInDb())) {
           await rolePermission.create({ conn });
           rolePermissions.push(rolePermission);
@@ -454,6 +467,71 @@ export class Auth {
 
       await sql.commit(conn);
       role.rolePermissions = [...role.rolePermissions, ...rolePermissions];
+    } catch (error) {
+      await sql.rollback(conn);
+
+      return {
+        status: false,
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error
+      };
+    }
+
+    return {
+      status: true,
+      data: role
+    };
+  }
+
+  /**
+   * Updates role permissions.
+   * @param roleId Role's ID.
+   * @param permissions List of permission to be updated.
+   * @returns Updated role and its permissions.
+   */
+  async updateRolePermissions(roleId: number, permissions: IUpdatePermission[]): Promise<IAuthResponse<Role>> {
+    const role = await new Role().populateById(roleId);
+    if (!role.exists()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
+      };
+    }
+
+    const sql = new MySqlUtil(await MySqlConnManager.getInstance().getConnection());
+    const conn = await sql.start();
+    try {
+      for (const permission of permissions) {
+        const rolePermission = await new RolePermission({}).populateByIds(role.id, permission.permission_id, conn);
+        if (!rolePermission.exists()) {
+          await sql.rollback(conn);
+
+          return {
+            status: false,
+            errors: [AuthResourceNotFoundErrorCode.ROLE_PERMISSION_DOES_NOT_EXISTS]
+          };
+        }
+
+        rolePermission.populate(permission, PopulateFor.PROFILE);
+        try {
+          await rolePermission.validate();
+        } catch (error) {
+          await rolePermission.handle(error);
+        }
+
+        if (!rolePermission.isValid()) {
+          await sql.rollback(conn);
+
+          return {
+            status: false,
+            errors: rolePermission.collectErrors().map((x) => x.code)
+          };
+        }
+        await rolePermission.update({ conn });
+      }
+
+      await role.populatePermissions(conn);
+      await sql.commit(conn);
     } catch (error) {
       await sql.rollback(conn);
 

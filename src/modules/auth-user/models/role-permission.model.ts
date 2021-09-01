@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/indent */
 /* eslint-disable @typescript-eslint/member-ordering */
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
-import * as mysql from 'mysql2/promise';
-import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { ActionOptions, BaseModel, DbModelStatus, enumInclusionValidator, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { AuthDbTables, PermissionLevel, AuthValidatorErrorCode } from '../../../config/types';
 import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
+import { PoolConnection } from 'mysql2/promise';
 
 /**
  * Role permission model.
@@ -54,7 +55,7 @@ export class RolePermission extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
+    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -69,12 +70,16 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.PROFILE],
     serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
         code: AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_SET
+      },
+      {
+        resolver: enumInclusionValidator(PermissionLevel),
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_VALID
       }
     ],
     fakeValue: () => PermissionLevel.ALL,
@@ -87,12 +92,16 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.PROFILE],
     serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
         code: AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_SET
+      },
+      {
+        resolver: enumInclusionValidator(PermissionLevel),
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_VALID
       }
     ],
     fakeValue: () => PermissionLevel.ALL,
@@ -105,12 +114,16 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [PopulateFor.DB, PopulateFor.ADMIN],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.PROFILE],
     serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
         code: AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_SET
+      },
+      {
+        resolver: enumInclusionValidator(PermissionLevel),
+        code: AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_VALID
       }
     ],
     fakeValue: () => PermissionLevel.ALL,
@@ -156,5 +169,86 @@ export class RolePermission extends BaseModel {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Populates model fields by Role ID and Permission ID.
+   * @param roleId Role's ID.
+   * @param permissionId Permission's ID.
+   * @param conn (optional) Database connection.
+   * @returns RolePermission (this)
+   */
+  public async populateByIds(roleId: number, permissionId: number, conn?: PoolConnection): Promise<this> {
+    if (!roleId || !permissionId) {
+      return this.reset();
+    }
+
+    const rows = await new MySqlUtil(await this.db()).paramExecute(
+      `
+      SELECT * FROM ${this.tableName}
+      WHERE role_id = @roleId
+        AND permission_id = @permissionId
+    `,
+      { roleId, permissionId },
+      conn
+    );
+
+    if (!rows?.length) {
+      return this.reset();
+    }
+
+    this.populate(rows[0]);
+    return this;
+  }
+
+  /**
+   * Updates model fields.
+   * @param options Update options.
+   * @returns Updated role permission (this)
+   */
+  public async update(options: ActionOptions = {}): Promise<this> {
+    if (!options?.context) {
+      options.context = this.getContext();
+    }
+
+    if (options?.context?.user?.id) {
+      this._updateUser = options.context.user.id;
+    }
+
+    const { singleTrans, sql, conn } = await this.getDbConnection(options.conn);
+    const serializedModel = this.serialize(SerializeFor.UPDATE_DB);
+    try {
+      const updateQuery = `
+      UPDATE \`${AuthDbTables.ROLE_PERMISSIONS}\`
+      SET
+        ${Object.keys(serializedModel)
+          .map((x) => `\`${x}\` = @${x}`)
+          .join(',\n')}
+      WHERE role_id = @roleId
+        AND permission_id = @permissionId
+      `;
+
+      await sql.paramExecute(
+        updateQuery,
+        {
+          ...serializedModel,
+          roleId: this.role_id,
+          permissionId: this.permission_id
+        },
+        conn
+      );
+
+      this._updateTime = new Date();
+      if (singleTrans) {
+        await sql.commit(conn);
+      }
+    } catch (error) {
+      if (singleTrans) {
+        await sql.rollback(conn);
+      }
+      throw new Error(error);
+    }
+
+    return this;
   }
 }

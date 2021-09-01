@@ -18,6 +18,7 @@ import { Auth } from '../auth';
 import { insertRoleWithPermissions } from '../../test-helpers/permission';
 import { Role } from '../../auth-user/models/role.model';
 import { AuthUser } from '../../..';
+import { RolePermission } from '../../auth-user/models/role-permission.model';
 
 describe('Auth service tests', () => {
   beforeEach(async () => {
@@ -576,6 +577,7 @@ describe('Auth service tests', () => {
       );
     });
   });
+
   describe('Invalidate JWT token tests', () => {
     it('Should invalidate JWT token', async () => {
       const user = await insertAuthUser();
@@ -1103,7 +1105,7 @@ describe('Auth service tests', () => {
     });
   });
 
-  describe('Role permissions adding and removing tests', () => {
+  describe('Role permissions adding tests', () => {
     const permissions = [
       {
         permission_id: 1,
@@ -1201,6 +1203,71 @@ describe('Auth service tests', () => {
       );
     });
 
+    it('Should not add role permission with missing data', async () => {
+      const auth = Auth.getInstance();
+      const role = (await auth.createRole(faker.lorem.word())).data;
+      let res = await auth.addPermissionsToRole(role.id, [
+        ...permissions,
+        {
+          permission_id: null,
+          name: null,
+          read: null,
+          write: null,
+          execute: null
+        }
+      ]);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_PERMISSION_ID_NOT_PRESENT]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_NAME_NOT_PRESENT]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_SET]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_SET]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_SET]));
+
+      const notUpdatedRole = await new Role().populateById(role.id);
+      expect(notUpdatedRole.rolePermissions.length).toBe(0);
+    });
+
+    it('Should not add role permission with invalid data', async () => {
+      const auth = Auth.getInstance();
+      const role = (await auth.createRole(faker.lorem.word())).data;
+      let res = await auth.addPermissionsToRole(role.id, [
+        ...permissions,
+        {
+          permission_id: 3,
+          name: faker.lorem.word(),
+          read: 123,
+          write: 123,
+          execute: 123
+        }
+      ]);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_VALID]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_VALID]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_VALID]));
+
+      const notUpdatedRole = await new Role().populateById(role.id);
+      expect(notUpdatedRole.rolePermissions.length).toBe(0);
+    });
+  });
+
+  describe('Role permissions removing tests', () => {
+    const permissions = [
+      {
+        permission_id: 1,
+        name: faker.lorem.words(1),
+        read: PermissionLevel.OWN,
+        write: PermissionLevel.NONE,
+        execute: PermissionLevel.NONE
+      },
+      {
+        permission_id: 2,
+        name: faker.lorem.words(1),
+        read: PermissionLevel.OWN,
+        write: PermissionLevel.NONE,
+        execute: PermissionLevel.NONE
+      }
+    ];
+
     it('Should remove permissions from role', async () => {
       const auth = Auth.getInstance();
       const role = (await auth.createRole('MyRole')).data;
@@ -1281,6 +1348,216 @@ describe('Auth service tests', () => {
       const failure = await auth.removePermissionsFromRole(role.id, [7]);
       expect(failure.status).toBe(false);
       expect(failure.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_PERMISSION_DOES_NOT_EXISTS]));
+    });
+  });
+
+  describe('Role permissions updating tests', () => {
+    const permissions = [
+      {
+        permission_id: 1,
+        name: faker.lorem.words(1),
+        read: PermissionLevel.OWN,
+        write: PermissionLevel.NONE,
+        execute: PermissionLevel.NONE
+      },
+      {
+        permission_id: 2,
+        name: faker.lorem.words(1),
+        read: PermissionLevel.OWN,
+        write: PermissionLevel.NONE,
+        execute: PermissionLevel.NONE
+      }
+    ];
+
+    it('Should update one role permission', async () => {
+      const auth = Auth.getInstance();
+      const role = (await auth.createRole(faker.lorem.word())).data;
+      let res = await auth.addPermissionsToRole(role.id, permissions);
+      expect(res.status).toBe(true);
+
+      const permissionId = permissions[0].permission_id;
+      res = await auth.updateRolePermissions(role.id, [
+        {
+          permission_id: permissionId,
+          read: PermissionLevel.ALL,
+          write: PermissionLevel.ALL,
+          execute: PermissionLevel.ALL
+        }
+      ]);
+      expect(res.status).toBe(true);
+      let updatedPermission = res.data.rolePermissions.find((rp) => rp.permission_id === permissionId);
+      expect(updatedPermission.read).toBe(PermissionLevel.ALL);
+      expect(updatedPermission.write).toBe(PermissionLevel.ALL);
+      expect(updatedPermission.execute).toBe(PermissionLevel.ALL);
+
+      updatedPermission = await new RolePermission({}).populateByIds(role.id, permissionId);
+      expect(updatedPermission.exists()).toBe(true);
+      expect(updatedPermission.read).toBe(PermissionLevel.ALL);
+      expect(updatedPermission.write).toBe(PermissionLevel.ALL);
+      expect(updatedPermission.execute).toBe(PermissionLevel.ALL);
+    });
+
+    it('Should update many role permissions', async () => {
+      const auth = Auth.getInstance();
+      const role = (await auth.createRole(faker.lorem.word())).data;
+      let res = await auth.addPermissionsToRole(role.id, [
+        ...permissions,
+        {
+          permission_id: 3,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        },
+        {
+          permission_id: 4,
+          name: faker.lorem.words(1),
+          read: PermissionLevel.OWN,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      expect(res.status).toBe(true);
+
+      res = await auth.updateRolePermissions(role.id, [
+        {
+          permission_id: permissions[0].permission_id,
+          read: PermissionLevel.ALL,
+          write: PermissionLevel.ALL,
+          execute: PermissionLevel.ALL
+        },
+        {
+          permission_id: permissions[1].permission_id,
+          read: PermissionLevel.NONE,
+          write: PermissionLevel.NONE,
+          execute: PermissionLevel.NONE
+        }
+      ]);
+      expect(res.status).toBe(true);
+      let updatedPermission1 = res.data.rolePermissions.find((rp) => rp.permission_id === permissions[0].permission_id);
+      expect(updatedPermission1.read).toBe(PermissionLevel.ALL);
+      expect(updatedPermission1.write).toBe(PermissionLevel.ALL);
+      expect(updatedPermission1.execute).toBe(PermissionLevel.ALL);
+
+      updatedPermission1 = await new RolePermission({}).populateByIds(role.id, permissions[0].permission_id);
+      expect(updatedPermission1.exists()).toBe(true);
+      expect(updatedPermission1.read).toBe(PermissionLevel.ALL);
+      expect(updatedPermission1.write).toBe(PermissionLevel.ALL);
+      expect(updatedPermission1.execute).toBe(PermissionLevel.ALL);
+
+      let updatedPermission2 = res.data.rolePermissions.find((rp) => rp.permission_id === permissions[1].permission_id);
+      expect(updatedPermission2.read).toBe(PermissionLevel.NONE);
+      expect(updatedPermission2.write).toBe(PermissionLevel.NONE);
+      expect(updatedPermission2.execute).toBe(PermissionLevel.NONE);
+
+      updatedPermission2 = await new RolePermission({}).populateByIds(role.id, permissions[1].permission_id);
+      expect(updatedPermission2.exists()).toBe(true);
+      expect(updatedPermission2.read).toBe(PermissionLevel.NONE);
+      expect(updatedPermission2.write).toBe(PermissionLevel.NONE);
+      expect(updatedPermission2.execute).toBe(PermissionLevel.NONE);
+    });
+
+    it('Should not update role permissions of non-existing role', async () => {
+      const auth = Auth.getInstance();
+
+      const res = await auth.addPermissionsToRole(123, permissions);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]));
+    });
+
+    it('Should not update non-existing role permission', async () => {
+      const auth = Auth.getInstance();
+      const role = (await auth.createRole(faker.lorem.word())).data;
+      let res = await auth.addPermissionsToRole(role.id, permissions);
+      expect(res.status).toBe(true);
+
+      const permissionId = permissions[0].permission_id;
+      res = await auth.updateRolePermissions(role.id, [
+        {
+          permission_id: permissionId,
+          read: PermissionLevel.ALL,
+          write: PermissionLevel.ALL,
+          execute: PermissionLevel.ALL
+        },
+        {
+          permission_id: 123,
+          read: PermissionLevel.ALL,
+          write: PermissionLevel.ALL,
+          execute: PermissionLevel.ALL
+        }
+      ]);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_PERMISSION_DOES_NOT_EXISTS]));
+
+      const notUpdatedRole = await new Role().populateById(role.id);
+      const notUpdatedPermission = notUpdatedRole.rolePermissions.find((rp) => rp.permission_id === permissionId);
+      expect(notUpdatedPermission.read).toBe(permissions[0].read);
+      expect(notUpdatedPermission.write).toBe(permissions[0].write);
+      expect(notUpdatedPermission.execute).toBe(permissions[0].execute);
+    });
+
+    it('Should not update role permission with missing data', async () => {
+      const auth = Auth.getInstance();
+      const role = (await auth.createRole(faker.lorem.word())).data;
+      let res = await auth.addPermissionsToRole(role.id, permissions);
+      expect(res.status).toBe(true);
+
+      res = await auth.updateRolePermissions(role.id, [
+        {
+          permission_id: permissions[0].permission_id,
+          read: PermissionLevel.ALL,
+          write: PermissionLevel.ALL,
+          execute: PermissionLevel.ALL
+        },
+        {
+          permission_id: permissions[1].permission_id,
+          read: null,
+          write: null,
+          execute: null
+        }
+      ]);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_SET]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_SET]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_SET]));
+
+      const notUpdatedRole = await new Role().populateById(role.id);
+      const notUpdatedPermission = notUpdatedRole.rolePermissions.find((rp) => rp.permission_id === permissions[0].permission_id);
+      expect(notUpdatedPermission.read).toBe(permissions[0].read);
+      expect(notUpdatedPermission.write).toBe(permissions[0].write);
+      expect(notUpdatedPermission.execute).toBe(permissions[0].execute);
+    });
+
+    it('Should not update role permission with invalid data', async () => {
+      const auth = Auth.getInstance();
+      const role = (await auth.createRole(faker.lorem.word())).data;
+      let res = await auth.addPermissionsToRole(role.id, permissions);
+      expect(res.status).toBe(true);
+
+      res = await auth.updateRolePermissions(role.id, [
+        {
+          permission_id: permissions[0].permission_id,
+          read: PermissionLevel.ALL,
+          write: PermissionLevel.ALL,
+          execute: PermissionLevel.ALL
+        },
+        {
+          permission_id: permissions[1].permission_id,
+          read: 123,
+          write: 123,
+          execute: 123
+        }
+      ]);
+      expect(res.status).toBe(false);
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_READ_LEVEL_NOT_VALID]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_WRITE_LEVEL_NOT_VALID]));
+      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_PERMISSION_EXECUTE_LEVEL_NOT_VALID]));
+
+      const notUpdatedRole = await new Role().populateById(role.id);
+      const notUpdatedPermission = notUpdatedRole.rolePermissions.find((rp) => rp.permission_id === permissions[0].permission_id);
+      expect(notUpdatedPermission.read).toBe(permissions[0].read);
+      expect(notUpdatedPermission.write).toBe(permissions[0].write);
+      expect(notUpdatedPermission.execute).toBe(permissions[0].execute);
     });
   });
 
