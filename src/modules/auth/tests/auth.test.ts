@@ -2221,23 +2221,54 @@ describe('Auth service tests', () => {
   });
 
   describe("Change user's password tests", () => {
-    it("Should change user's password if the correct current password is provided", async () => {
+    it("Should change user's password if the correct current password is provided, also it should invalidate all user's auth tokens", async () => {
       const auth = Auth.getInstance();
       const currentPassword = faker.internet.password();
       const newPassword = faker.internet.password();
+      const username = faker.internet.password();
 
       const user = (
         await auth.createAuthUser({
           id: faker.datatype.number(10_000_000),
-          username: faker.internet.userName(),
+          username: username,
           email: faker.internet.email().toLowerCase(),
           password: currentPassword
         })
       ).data;
 
+      await auth.loginUsername(username, currentPassword);
+      await auth.loginUsername(username, currentPassword);
+      await auth.loginUsername(username, currentPassword);
+      await auth.loginUsername(username, currentPassword);
+      await auth.loginUsername(username, currentPassword);
+
+      let tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'count'
+        FROM ${AuthDbTables.TOKENS} t
+        WHERE t.user_id = ${user.id}
+          AND t.status = ${DbModelStatus.ACTIVE};`
+      );
+      expect(tokens[0].count).toBe(5);
+
       const updatedRes = await auth.changePassword(user.id, currentPassword, newPassword);
       expect(updatedRes.status).toEqual(true);
       expect(await updatedRes.data.comparePassword(newPassword)).toEqual(true);
+
+      tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'count'
+        FROM ${AuthDbTables.TOKENS} t
+        WHERE t.user_id = ${user.id}
+          AND t.status = ${DbModelStatus.ACTIVE};`
+      );
+      expect(tokens[0].count).toBe(0);
+
+      tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+        `SELECT COUNT(*) AS 'count'
+        FROM ${AuthDbTables.TOKENS} t
+        WHERE t.user_id = ${user.id}
+          AND t.status = ${DbModelStatus.DELETED};`
+      );
+      expect(tokens[0].count).toBe(5);
     });
 
     it("Should not change user's password if the incorrect current password is provided", async () => {

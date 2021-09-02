@@ -629,7 +629,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id);
     } else {
       return {
         status: false,
@@ -654,7 +654,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id);
     } else {
       return {
         status: false,
@@ -679,7 +679,7 @@ export class Auth {
       };
     }
 
-    return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION);
+    return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id);
   }
 
   /**
@@ -806,9 +806,15 @@ export class Auth {
           errors: authUser.collectErrors().map((x) => x.code)
         };
       } else {
+        const sql = new MySqlUtil(await MySqlConnManager.getInstance().getConnection());
+        const conn = await sql.start();
         try {
-          await authUser.updateNonUpdatableFields(['passwordHash']);
+          await authUser.updateNonUpdatableFields(['passwordHash'], conn);
+          await new Token().invalidateUserTokens(authUser.id, AuthJwtTokenType.USER_AUTHENTICATION, conn);
+          await sql.commit(conn);
         } catch (error) {
+          await sql.rollback(conn);
+
           return {
             status: false,
             errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],

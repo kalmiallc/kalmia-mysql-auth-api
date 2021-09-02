@@ -471,7 +471,7 @@ export class AuthUser extends BaseModel {
    * @param updateFields List of fields to update
    * @returns AuthUser (this)
    */
-  public async updateNonUpdatableFields(updateFields: string[]): Promise<this> {
+  public async updateNonUpdatableFields(updateFields: string[], connection?: PoolConnection): Promise<this> {
     const filtered = new Set(updateFields);
     filtered.delete('id');
 
@@ -482,8 +482,10 @@ export class AuthUser extends BaseModel {
       }
     }
 
-    await new MySqlUtil(await this.db()).paramExecute(
-      `
+    const { singleTrans, sql, conn } = await this.getDbConnection(connection);
+    try {
+      await sql.paramExecute(
+        `
       UPDATE \`${this.tableName}\`
       SET
         ${Object.keys(updatable)
@@ -491,11 +493,22 @@ export class AuthUser extends BaseModel {
           .join(',\n')}
       WHERE id = @id
       `,
-      {
-        ...updatable,
-        id: this.id
+        {
+          ...updatable,
+          id: this.id
+        },
+        conn
+      );
+
+      if (singleTrans) {
+        await sql.commit(conn);
       }
-    );
+    } catch (error) {
+      if (singleTrans) {
+        await sql.rollback(conn);
+      }
+      throw new Error(error);
+    }
 
     return this;
   }

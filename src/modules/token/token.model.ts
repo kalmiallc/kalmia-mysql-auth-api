@@ -2,10 +2,11 @@
 import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
 import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
-import { AuthDbTables } from '../../config/types';
+import { AuthDbTables, AuthJwtTokenType } from '../../config/types';
 import * as jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
+import { PoolConnection } from 'mysql2/promise';
 
 /**
  * JWT token model.
@@ -201,7 +202,7 @@ export class Token extends BaseModel {
 
     try {
       await sqlUtil.paramExecute(
-        `UPDATE \`${this.tableName}\`  t
+        `UPDATE \`${AuthDbTables.TOKENS}\`  t
         SET t.status = ${DbModelStatus.DELETED}
         WHERE t.token = @token`,
         {
@@ -213,10 +214,47 @@ export class Token extends BaseModel {
       this.status = DbModelStatus.DELETED;
       await sqlUtil.commit(conn);
       return true;
-    } catch (e) {
+    } catch (error) {
       await sqlUtil.rollback(conn);
     }
     return false;
+  }
+
+  /**
+   * Invalidates all of the user's tokens with a specific subject.
+   * @param userId User's ID.
+   * @param type Token type
+   * @returns Boolean if tokens were invalidated successfully.
+   */
+  public async invalidateUserTokens(userId: number, type: AuthJwtTokenType, connection?: PoolConnection): Promise<boolean> {
+    if (!userId || !type) {
+      return null;
+    }
+
+    const { singleTrans, sql, conn } = await this.getDbConnection(connection);
+    try {
+      await sql.paramExecute(
+        `UPDATE \`${AuthDbTables.TOKENS}\`  t
+        SET t.status = ${DbModelStatus.DELETED}
+        WHERE t.user_id = @userId
+          AND t.subject = @type`,
+        {
+          userId,
+          type
+        },
+        conn
+      );
+
+      if (singleTrans) {
+        await sql.commit(conn);
+      }
+      return true;
+    } catch (error) {
+      if (singleTrans) {
+        await sql.rollback(conn);
+      }
+      throw new Error(error);
+    }
   }
 
   /**
@@ -237,7 +275,7 @@ export class Token extends BaseModel {
       if (payload) {
         const query = `
           SELECT t.token, t.user_id, t.status, t.expiresAt
-          FROM \`${this.tableName}\` t
+          FROM \`${AuthDbTables.TOKENS}\` t
           WHERE t.token = @token
             AND t.expiresAt > CURRENT_TIMESTAMP
             AND t.status < ${DbModelStatus.DELETED}
@@ -253,7 +291,7 @@ export class Token extends BaseModel {
           return payload;
         }
       }
-    } catch (e) {
+    } catch (error) {
       return null;
     }
     return null;
