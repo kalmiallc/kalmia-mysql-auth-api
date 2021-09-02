@@ -215,8 +215,12 @@ export class RolePermission extends BaseModel {
       this._updateUser = options.context.user.id;
     }
 
-    const { singleTrans, sql, conn } = await this.getDbConnection(options.conn);
     const serializedModel = this.serialize(SerializeFor.UPDATE_DB);
+    delete serializedModel.id;
+    delete serializedModel._createTime;
+    delete serializedModel._updateTime;
+
+    const { singleTrans, sql, conn } = await this.getDbConnection(options.conn);
     try {
       const updateQuery = `
       UPDATE \`${AuthDbTables.ROLE_PERMISSIONS}\`
