@@ -560,8 +560,6 @@ export class AuthUser extends BaseModel {
         await mySqlHelper.commit(options.conn);
       }
     } catch (error) {
-      console.log(error);
-
       if (isSingleTrans) {
         await mySqlHelper.rollback(options.conn);
       }

@@ -7,6 +7,7 @@ import * as jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
 import { PoolConnection } from 'mysql2/promise';
+import { createHash } from 'crypto';
 
 /**
  * JWT token model.
@@ -49,7 +50,9 @@ export class Token extends BaseModel {
   public exp: string | number;
 
   /**
-   * Token's expiresAt property definition. This is calculated and saved to the database so it is known when the token will expire. This also enables querying. Do not populate this, use exp.
+   * Token's expiresAt property definition.
+   * This is calculated and saved to the database so it is known when the token will expire.
+   * This also enables querying. Do not populate this, use exp.
    */
   @prop({
     parser: { resolver: dateParser() },
@@ -59,17 +62,31 @@ export class Token extends BaseModel {
   public expiresAt: Date;
 
   /**
-   * Token's token property definition. Populate this if you need to validate, invalidate, or refresh a token. This is also where newly-generated tokens are assigned.
+   * Token's token property definition.
+   * Populate this if you need to validate, invalidate, or refresh a token. This is also where newly-generated tokens are assigned.
    */
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB]
+    serializable: [SerializeFor.PROFILE]
   })
   public token: string;
 
   /**
-   * Token's payload property definition. This is the data that will be stored in the token and will be retrieved from the token. Populate this if you wish to generate a token.
+   * Token's hash property definition.
+   * This property is used for saving the hashed token in the database - actual value of the token is never saved.
+   */
+  @prop({
+    getter() {
+      return this.token ? createHash('sha256').update(this.token).digest('hex') : null;
+    }
+  })
+  private _tokenHash: string;
+
+  /**
+   * Token's payload property definition.
+   * This is the data that will be stored in the token and will be retrieved from the token.
+   * Populate this if you wish to generate a token.
    */
   @prop({
     populatable: [],
@@ -114,10 +131,11 @@ export class Token extends BaseModel {
         (@token, @status, @user_id, @subject, @expiresAt)`;
       const sqlUtil = new MySqlUtil(await this.db());
       const conn = await sqlUtil.start();
+
       await sqlUtil.paramExecute(
         createQuery,
         {
-          token: this.token,
+          token: this._tokenHash,
           user_id: this.user_id,
           subject: this.subject,
           expiresAt: this.expiresAt,
@@ -136,7 +154,8 @@ export class Token extends BaseModel {
   }
 
   /**
-   * If token in this.token exists in the database and is valid, returns a token with the same payload and refreshed expiration. Expiration duration is the same as that of the original token.
+   * If token in this.token exists in the database and is valid, returns a token with the same payload and refreshed expiration.
+   * Expiration duration is the same as that of the original token.
    * @returns new token.
    */
   public async refresh(): Promise<string> {
@@ -158,14 +177,14 @@ export class Token extends BaseModel {
           AND t.expiresAt > CURRENT_TIMESTAMP
           AND t.status < ${DbModelStatus.DELETED}
       `,
-        { token: this.token }
+        { token: this._tokenHash }
       );
 
       if (data && data.length) {
         this.populate(data[0], PopulateFor.DB);
         return await this.generate(this.exp);
       }
-    } catch (e) {
+    } catch (error) {
       return null;
     }
     return null;
@@ -182,11 +201,11 @@ export class Token extends BaseModel {
       SELECT * FROM ${this.tableName}
       WHERE token = @token
     `,
-      { token }
+      { token: createHash('sha256').update(token).digest('hex') }
     );
 
     if (data && data.length) {
-      return this.populate(data[0], PopulateFor.DB);
+      return this.populate({ ...data[0], token }, PopulateFor.DB);
     } else {
       return this.reset();
     }
@@ -206,7 +225,7 @@ export class Token extends BaseModel {
         SET t.status = ${DbModelStatus.DELETED}
         WHERE t.token = @token`,
         {
-          token: this.token
+          token: this._tokenHash
         },
         conn
       );
@@ -283,7 +302,7 @@ export class Token extends BaseModel {
         `;
 
         const data = await new MySqlUtil(await this.db()).paramExecute(query, {
-          token: this.token,
+          token: this._tokenHash,
           userId
         });
 

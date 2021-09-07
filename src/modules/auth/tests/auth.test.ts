@@ -20,6 +20,7 @@ import { Role } from '../../auth-user/models/role.model';
 import { AuthUser } from '../../..';
 import { RolePermission } from '../../auth-user/models/role-permission.model';
 import { env } from '../../../config/env';
+import { createHash } from 'crypto';
 
 describe('Auth service tests', () => {
   beforeEach(async () => {
@@ -527,7 +528,7 @@ describe('Auth service tests', () => {
       expect(tokenEntry).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            token: token.data,
+            token: createHash('sha256').update(token.data).digest('hex'),
             status: DbModelStatus.ACTIVE,
             user_id: null,
             subject: AuthJwtTokenType.USER_SIGN_UP
@@ -569,7 +570,7 @@ describe('Auth service tests', () => {
       expect(tokenEntry).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            token: token.data,
+            token: createHash('sha256').update(token.data).digest('hex'),
             status: DbModelStatus.ACTIVE,
             user_id: user.id,
             subject: AuthJwtTokenType.USER_SIGN_UP
@@ -614,7 +615,7 @@ describe('Auth service tests', () => {
       expect(tokenEntry).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            token: token.data,
+            token: createHash('sha256').update(token.data).digest('hex'),
             status: 9,
             user_id: user.id,
             subject: AuthJwtTokenType.USER_SIGN_UP
@@ -767,7 +768,7 @@ describe('Auth service tests', () => {
         `UPDATE ${AuthDbTables.TOKENS}
       SET expiresAt = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
       WHERE token = @token;`,
-        { token: token.data }
+        { token: createHash('sha256').update(token.data).digest('hex') }
       );
 
       const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);

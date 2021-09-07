@@ -945,7 +945,7 @@ export class Auth {
    * @param data User's updatable data.
    * @returns Updated auth user.
    */
-  async update(userId: any, data: { username: string; email: string }): Promise<IAuthResponse<AuthUser>> {
+  async updateAuthUser(userId: any, data: { username: string; email: string }): Promise<IAuthResponse<AuthUser>> {
     const authUser = await new AuthUser().populateById(userId);
     if (!authUser.exists()) {
       return {
