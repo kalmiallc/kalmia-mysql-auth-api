@@ -231,7 +231,6 @@ export class Role extends BaseModel {
           AND (@search IS NULL
             OR r.name LIKE CONCAT('%', @search, '%')
           )
-          AND (r.status < ${DbModelStatus.DELETED})
         `,
       qGroup: `
         GROUP BY
@@ -254,7 +253,8 @@ export class Role extends BaseModel {
       `
     };
 
-    const res = await selectAndCountQuery(new MySqlUtil(await this.db()), sqlQuery, params, 'r.id');
+    const sql = await this.sql();
+    const res = await selectAndCountQuery(sql, sqlQuery, params, 'r.id');
     const rows = res.items;
 
     let roles: Role[] = [];
@@ -284,9 +284,24 @@ export class Role extends BaseModel {
       }
     }
 
+    const total = await sql
+      .paramExecute(
+        `
+      SELECT COUNT(*) AS 'count'
+      FROM ${AuthDbTables.ROLES} r
+      WHERE
+        (@id IS NULL OR r.id = @id)
+        AND (@search IS NULL
+          OR r.name LIKE CONCAT('%', @search, '%')
+        )
+      `,
+        params
+      )
+      .then((totalRes: any[]) => (totalRes[0]?.count ? Number(totalRes[0].count) : res.total));
+
     return {
       items: roles,
-      total: res.total
+      total
     };
   }
 
@@ -299,29 +314,29 @@ export class Role extends BaseModel {
     const { singleTrans, sql, conn } = await this.getDbConnection(options.conn);
 
     try {
-      const deleteUserRoles = `
+      const deleteUserRolesQuery = `
         DELETE ur
         FROM ${AuthDbTables.USER_ROLES} ur
         JOIN ${AuthDbTables.ROLES} r
           ON ur.role_id = r.id
         WHERE r.id = @roleId
         `;
-      await sql.paramExecute(deleteUserRoles, { roleId: this.id }, conn);
+      await sql.paramExecute(deleteUserRolesQuery, { roleId: this.id }, conn);
 
-      const deleteRolePermissions = `
+      const deleteRolePermissionsQuery = `
         DELETE rp
         FROM ${AuthDbTables.ROLE_PERMISSIONS} rp
         JOIN ${AuthDbTables.ROLES} r
           ON rp.role_id = r.id
         WHERE r.id = @roleId
       `;
-      await sql.paramExecute(deleteRolePermissions, { roleId: this.id }, conn);
+      await sql.paramExecute(deleteRolePermissionsQuery, { roleId: this.id }, conn);
 
-      const deleteRole = `
+      const deleteRoleQuery = `
         DELETE FROM ${AuthDbTables.ROLES}
         WHERE id = @roleId
       `;
-      await sql.paramExecute(deleteRole, { roleId: this.id }, conn);
+      await sql.paramExecute(deleteRoleQuery, { roleId: this.id }, conn);
 
       if (singleTrans) {
         await sql.commit(conn);
