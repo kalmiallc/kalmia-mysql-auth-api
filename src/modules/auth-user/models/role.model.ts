@@ -223,7 +223,7 @@ export class Role extends BaseModel {
           rp._updateUser as rpUpdateUser
         `,
       qFrom: `
-        FROM \`${AuthDbTables.ROLES}\` r
+        FROM (SELECT * FROM \`${AuthDbTables.ROLES}\` LIMIT ${filters.limit} OFFSET ${filters.offset}) r
         LEFT JOIN \`${AuthDbTables.ROLE_PERMISSIONS}\` rp
           ON r.id = rp.role_id
         WHERE
@@ -250,8 +250,7 @@ export class Role extends BaseModel {
           rp._updateUser
         `,
       qFilter: `
-        ORDER BY ${filters.orderStr}
-        LIMIT ${filters.limit} OFFSET ${filters.offset};
+        ORDER BY ${filters.orderStr};
       `
     };
 
