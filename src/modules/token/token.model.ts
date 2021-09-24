@@ -256,7 +256,8 @@ export class Token extends BaseModel {
         `UPDATE \`${AuthDbTables.TOKENS}\`  t
         SET t.status = ${DbModelStatus.DELETED}
         WHERE t.user_id = @userId
-          AND t.subject = @type`,
+          AND t.subject = @type
+          AND t.status < ${DbModelStatus.DELETED}`,
         {
           userId,
           type

@@ -297,6 +297,38 @@ export class Auth {
   }
 
   /**
+   * Invalidates all of the given user's tokens with specified type.
+   * @param userId User's ID.
+   * @param type Type of the token.
+   * @returns Boolean, whether invalidation was successful.
+   */
+  async invalidateUserTokens(userId: number, type: AuthJwtTokenType): Promise<IAuthResponse<boolean>> {
+    const user = await new AuthUser().populateById(userId);
+    if (!user.exists()) {
+      return {
+        status: false,
+        errors: [AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+      };
+    }
+
+    try {
+      const invalidation = await new Token().invalidateUserTokens(userId, type);
+      if (invalidation) {
+        return {
+          status: true,
+          data: invalidation
+        };
+      }
+    } catch (error) {
+      return {
+        status: false,
+        errors: [AuthSystemErrorCode.SQL_SYSTEM_ERROR],
+        details: error
+      };
+    }
+  }
+
+  /**
    * Validates token. If valid, returns token payload.
    * @param token token to be validated
    * @param subject JWT subject for token to be validated with
