@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/indent */
 /* eslint-disable @typescript-eslint/member-ordering */
+import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
-import { ActionOptions, BaseModel, DbModelStatus, enumInclusionValidator, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
-import { AuthDbTables, PermissionLevel, AuthValidatorErrorCode } from '../../../config/types';
-import { prop } from '@rawmodel/core';
-import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
+import { enumInclusionValidator } from 'kalmia-common-lib';
+import { ActionOptions, BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
+import { AuthDbTables, AuthValidatorErrorCode, PermissionLevel } from '../../../config/types';
+import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 
 /**
  * Role permission model.
