@@ -1,6 +1,6 @@
 /* eslint-disable radix */
 import * as dotenv from 'dotenv';
-import { IEnv as DbIEnv, env as dbEnv } from 'kalmia-sql-lib';
+import { IEnv as DbIEnv, env as dbEnv, ICommonEnv } from 'kalmia-sql-lib';
 
 export interface IAuthEnv {
   APP_SECRET: string;
@@ -10,7 +10,7 @@ export interface IAuthEnv {
  * Load variables from .env.
  */
 dotenv.config();
-export const env: IAuthEnv & DbIEnv = {
+export const env: IAuthEnv & DbIEnv & ICommonEnv = {
   ...dbEnv,
 
   /*
