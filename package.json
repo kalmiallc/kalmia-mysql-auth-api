@@ -1,6 +1,6 @@
 {
   "name": "kalmia-mysql-auth-api",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MySQL auth package for Kalmia.",
   "main": "dist/index.js",
   "scripts": {
@@ -59,6 +59,7 @@
     "faker": "^5.5.3",
     "jsonwebtoken": "^8.5.1",
     "kalmia-sql-lib": "git+ssh://git@bitbucket.org/kalmiadevs/kalmia-sql-lib",
+    "kalmia-common-lib": "git+ssh://git@bitbucket.org/kalmiadevs/kalmia-common-lib",
     "mysql2": "^2.2.5",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
