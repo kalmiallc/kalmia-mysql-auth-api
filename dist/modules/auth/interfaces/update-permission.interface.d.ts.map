@@ -1,0 +1,1 @@
+{"version":3,"file":"update-permission.interface.d.ts","sourceRoot":"","sources":["../../../../src/modules/auth/interfaces/update-permission.interface.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,eAAe,EAAE,MAAM,uBAAuB,CAAC;AAExD;;GAEG;AACH,MAAM,WAAW,iBAAiB;IAChC,aAAa,EAAE,MAAM,CAAC;IACtB,IAAI,CAAC,EAAE,eAAe,CAAC;IACvB,KAAK,CAAC,EAAE,eAAe,CAAC;IACxB,OAAO,CAAC,EAAE,eAAe,CAAC;CAC3B"}
