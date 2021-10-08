@@ -1,6 +1,6 @@
 import { BaseModel } from 'kalmia-sql-lib';
-import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthJwtTokenType } from '../../config/types';
+import { PoolConnection } from 'mysql2/promise';
 /**
  * JWT token model.
  */

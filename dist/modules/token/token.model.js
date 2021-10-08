@@ -13,12 +13,12 @@ exports.Token = void 0;
 /* eslint-disable @typescript-eslint/member-ordering */
 const core_1 = require("@rawmodel/core");
 const parsers_1 = require("@rawmodel/parsers");
-const crypto_1 = require("crypto");
-const jwt = require("jsonwebtoken");
 const kalmia_sql_lib_1 = require("kalmia-sql-lib");
-const uuid_1 = require("uuid"); // timestamp uuid
-const env_1 = require("../../config/env");
 const types_1 = require("../../config/types");
+const jwt = require("jsonwebtoken");
+const env_1 = require("../../config/env");
+const uuid_1 = require("uuid"); // timestamp uuid
+const crypto_1 = require("crypto");
 /**
  * JWT token model.
  */
@@ -186,9 +186,6 @@ class Token extends kalmia_sql_lib_1.BaseModel {
             const payload = jwt.verify(this.token, env_1.env.APP_SECRET, {
                 subject: this.subject
             });
-            if (!userId) {
-                userId = 'NULL';
-            }
             if (payload) {
                 const query = `
           SELECT t.token, t.user_id, t.status, t.expiresAt
