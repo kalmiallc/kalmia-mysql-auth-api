@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
-import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
-import { AuthDbTables, AuthJwtTokenType } from '../../config/types';
-import * as jwt from 'jsonwebtoken';
-import { env } from '../../config/env';
-import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
-import { PoolConnection } from 'mysql2/promise';
 import { createHash } from 'crypto';
+import * as jwt from 'jsonwebtoken';
+import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { PoolConnection } from 'mysql2/promise';
+import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
+import { env } from '../../config/env';
+import { AuthDbTables, AuthJwtTokenType } from '../../config/types';
 
 /**
  * JWT token model.
@@ -291,6 +291,10 @@ export class Token extends BaseModel {
       const payload = jwt.verify(this.token, env.APP_SECRET, {
         subject: this.subject
       });
+
+      if (!userId) {
+        userId = 'NULL';
+      }
 
       if (payload) {
         const query = `
