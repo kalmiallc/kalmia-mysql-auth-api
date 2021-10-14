@@ -1,9 +1,9 @@
-import { PoolConnection } from 'mysql2/promise';
-import { Role } from './role.model';
-import { RolePermission } from './role-permission.model';
 import { BaseModel } from 'kalmia-sql-lib';
+import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables } from '../../../config/types';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
+import { RolePermission } from './role-permission.model';
+import { Role } from './role.model';
 /**
  * Auth user model.
  */

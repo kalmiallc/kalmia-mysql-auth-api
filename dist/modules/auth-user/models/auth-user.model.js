@@ -12,15 +12,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthUser = void 0;
 /* eslint-disable @typescript-eslint/indent */
 /* eslint-disable @typescript-eslint/member-ordering */
+const core_1 = require("@rawmodel/core");
 const parsers_1 = require("@rawmodel/parsers");
 const utils_1 = require("@rawmodel/utils");
 const validators_1 = require("@rawmodel/validators");
 const bcrypt = require("bcryptjs");
-const role_model_1 = require("./role.model");
-const role_permission_model_1 = require("./role-permission.model");
 const kalmia_sql_lib_1 = require("kalmia-sql-lib");
 const types_1 = require("../../../config/types");
-const core_1 = require("@rawmodel/core");
+const role_permission_model_1 = require("./role-permission.model");
+const role_model_1 = require("./role.model");
 /**
  * Validates uniqueness of the ID field if model was not created yet.
  * @returns boolean
@@ -322,7 +322,7 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
         if (isSingleTrans) {
             options.conn = await mySqlHelper.start();
         }
-        mySqlHelper = new kalmia_sql_lib_1.MySqlUtil(options.conn);
+        mySqlHelper = new kalmia_sql_lib_1.MySqlUtil();
         try {
             const createQuery = `
       INSERT INTO \`${this.tableName}\`

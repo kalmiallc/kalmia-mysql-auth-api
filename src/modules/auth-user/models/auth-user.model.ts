@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/indent */
 /* eslint-disable @typescript-eslint/member-ordering */
+import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { isPresent } from '@rawmodel/utils';
 import { emailValidator, presenceValidator, stringLengthValidator } from '@rawmodel/validators';
 import * as bcrypt from 'bcryptjs';
-import { PoolConnection } from 'mysql2/promise';
-import { Role } from './role.model';
-import { RolePermission } from './role-permission.model';
 import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldValidator, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
+import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
-import { prop } from '@rawmodel/core';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
+import { RolePermission } from './role-permission.model';
+import { Role } from './role.model';
 
 /**
  * Validates uniqueness of the ID field if model was not created yet.
@@ -534,7 +534,7 @@ export class AuthUser extends BaseModel {
     if (isSingleTrans) {
       options.conn = await mySqlHelper.start();
     }
-    mySqlHelper = new MySqlUtil(options.conn);
+    mySqlHelper = new MySqlUtil();
 
     try {
       const createQuery = `

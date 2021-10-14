@@ -1,7 +1,10 @@
+import { createHash } from 'crypto';
 import * as faker from 'faker';
 import * as jwt from 'jsonwebtoken';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
+import { AuthUser } from '../../..';
+import { env } from '../../../config/env';
 import {
   AuthAuthenticationErrorCode,
   AuthBadRequestErrorCode,
@@ -12,15 +15,12 @@ import {
   PermissionLevel,
   PermissionType
 } from '../../../config/types';
+import { RolePermission } from '../../auth-user/models/role-permission.model';
+import { Role } from '../../auth-user/models/role.model';
+import { insertRoleWithPermissions } from '../../test-helpers/permission';
 import { cleanDatabase, closeConnectionToDb, connectToDb } from '../../test-helpers/setup';
 import { insertAuthUser } from '../../test-helpers/test-user';
 import { Auth } from '../auth';
-import { insertRoleWithPermissions } from '../../test-helpers/permission';
-import { Role } from '../../auth-user/models/role.model';
-import { AuthUser } from '../../..';
-import { RolePermission } from '../../auth-user/models/role-permission.model';
-import { env } from '../../../config/env';
-import { createHash } from 'crypto';
 
 describe('Auth service tests', () => {
   beforeEach(async () => {
@@ -110,7 +110,7 @@ describe('Auth service tests', () => {
       { permission_id: 2, name: faker.lorem.words(1), read: PermissionLevel.OWN, write: PermissionLevel.NONE, execute: PermissionLevel.NONE }
     ]);
 
-    const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+    const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
     );
     expect(count.length).toBe(1);
@@ -122,7 +122,7 @@ describe('Auth service tests', () => {
       ])
     );
 
-    const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+    const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
       `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`
     );
     expect(permissionCount.length).toBe(1);
@@ -161,7 +161,7 @@ describe('Auth service tests', () => {
       expect(updatedUser.roles.length).toBe(1);
       expect(updatedUser.permissions.length).toBe(1);
 
-      const rolesCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const rolesCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
       );
       expect(rolesCount.length).toBe(1);
@@ -224,7 +224,7 @@ describe('Auth service tests', () => {
       expect(updatedUser.roles.length).toBe(3);
       expect(updatedUser.permissions.length).toBe(4);
 
-      const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
       );
       expect(permissionCount.length).toBe(1);
@@ -254,7 +254,7 @@ describe('Auth service tests', () => {
       expect(res.status).toBe(false);
       expect(res.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]));
 
-      const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const permissionCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
       );
       expect(permissionCount.length).toBe(1);
@@ -303,7 +303,7 @@ describe('Auth service tests', () => {
       expect(res.status).toBe(false);
       expect(res.errors).toEqual(expect.arrayContaining([AuthBadRequestErrorCode.AUTH_USER_ROLE_ALREADY_EXISTS]));
 
-      const rolesCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const rolesCount = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.USER_ROLES};`
       );
       expect(rolesCount.length).toBe(1);
@@ -505,7 +505,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -521,7 +521,7 @@ describe('Auth service tests', () => {
       const contents = jwt.decode(token.data);
       expect(contents).toEqual(expect.objectContaining(obj));
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -547,7 +547,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -563,7 +563,7 @@ describe('Auth service tests', () => {
       const contents = jwt.decode(token.data);
       expect(contents).toEqual(expect.objectContaining(obj));
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -591,7 +591,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -608,7 +608,7 @@ describe('Auth service tests', () => {
       expect(contents).toEqual(expect.objectContaining(obj));
       await auth.invalidateToken(token.data);
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -636,7 +636,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -649,7 +649,7 @@ describe('Auth service tests', () => {
         ])
       );
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
       const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP);
@@ -668,7 +668,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -681,7 +681,7 @@ describe('Auth service tests', () => {
         ])
       );
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -707,7 +707,7 @@ describe('Auth service tests', () => {
         subject: AuthJwtTokenType.USER_SIGN_UP,
         expiresIn: '1d'
       });
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -751,7 +751,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -764,7 +764,7 @@ describe('Auth service tests', () => {
         ])
       );
 
-      const expired = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const expired = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `UPDATE ${AuthDbTables.TOKENS}
       SET expiresAt = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
       WHERE token = @token;`,
@@ -791,7 +791,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -804,7 +804,7 @@ describe('Auth service tests', () => {
         ])
       );
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
       const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
@@ -823,7 +823,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -836,7 +836,7 @@ describe('Auth service tests', () => {
         ])
       );
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
       const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id);
@@ -854,7 +854,7 @@ describe('Auth service tests', () => {
       };
 
       const token = await auth.generateToken(obj, AuthJwtTokenType.USER_SIGN_UP, user.id);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -867,7 +867,7 @@ describe('Auth service tests', () => {
         ])
       );
 
-      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokenEntry = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM ${AuthDbTables.TOKENS};`
       );
       const isValid = await auth.validateToken(token.data, AuthJwtTokenType.USER_SIGN_UP, user.id + 1);
@@ -934,7 +934,7 @@ describe('Auth service tests', () => {
         })
       );
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
       );
 
@@ -968,7 +968,7 @@ describe('Auth service tests', () => {
       expect(newRole.status).toBe(false);
       expect(newRole.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.ROLE_NAME_ALREADY_TAKEN]));
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
       );
 
@@ -1003,7 +1003,7 @@ describe('Auth service tests', () => {
         })
       );
 
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
       );
 
@@ -1080,7 +1080,7 @@ describe('Auth service tests', () => {
       expect(user.roles.length).toEqual(1);
       expect(user.permissions.length).toEqual(2);
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLES};`
       );
 
@@ -1135,7 +1135,7 @@ describe('Auth service tests', () => {
       expect(success.status).toBe(true);
       expect(createdPermissions).toEqual(expect.arrayContaining(permissions));
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`
       );
 
@@ -1155,7 +1155,7 @@ describe('Auth service tests', () => {
       expect(failure.status).toBe(false);
       expect(failure.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]));
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`
       );
 
@@ -1187,7 +1187,7 @@ describe('Auth service tests', () => {
       expect(failure.status).toBe(false);
       expect(failure.errors).toEqual(expect.arrayContaining([AuthBadRequestErrorCode.ROLE_PERMISSION_ALREADY_EXISTS]));
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`
       );
 
@@ -1287,7 +1287,7 @@ describe('Auth service tests', () => {
         }
       ]);
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`
       );
 
@@ -1304,7 +1304,7 @@ describe('Auth service tests', () => {
       expect(successRm.status).toBe(true);
       expect(successRm.data.rolePermissions.length).toBe(2);
 
-      const count2 = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count2 = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`
       );
 
@@ -1330,7 +1330,7 @@ describe('Auth service tests', () => {
       const role = (await auth.createRole('MyRole5')).data;
       await auth.addPermissionsToRole(role.id, permissions);
 
-      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const count = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.ROLE_PERMISSIONS};`
       );
 
@@ -1971,7 +1971,7 @@ describe('Auth service tests', () => {
       };
       const user = await auth.createAuthUser(obj);
       const token = await auth.loginEmail(obj.email, obj.password);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -2005,7 +2005,7 @@ describe('Auth service tests', () => {
         })
       ).data;
       const token = await auth.loginEmail(user.email, 'badpassword');
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -2034,7 +2034,7 @@ describe('Auth service tests', () => {
 
       const user = await auth.createAuthUser(obj);
       const token = await auth.loginUsername(obj.username, obj.password);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -2067,7 +2067,7 @@ describe('Auth service tests', () => {
       };
       const user = await auth.createAuthUser(obj);
       const token = await auth.loginUsername(obj.username, 'bad_password');
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -2095,7 +2095,7 @@ describe('Auth service tests', () => {
       };
       const user = await auth.createAuthUser(obj);
       const token = await auth.loginUsername('wrong_username', obj.password);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -2127,7 +2127,7 @@ describe('Auth service tests', () => {
       const user = (await auth.createAuthUser(obj)).data;
 
       const updatedRes = await auth.changeUsername(user.id, newUsername);
-      const updatedUser = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const updatedUser = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM \`${AuthDbTables.USERS}\`
        WHERE username = @newUsername
       `,
@@ -2180,7 +2180,7 @@ describe('Auth service tests', () => {
       const user = (await auth.createAuthUser(obj)).data;
 
       const updatedRes = await auth.changeEmail(user.id, newEmail);
-      const updatedUser = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const updatedUser = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT * FROM \`${AuthDbTables.USERS}\`
        WHERE email = @newEmail
       `,
@@ -2243,7 +2243,7 @@ describe('Auth service tests', () => {
       await auth.loginUsername(username, currentPassword);
       await auth.loginUsername(username, currentPassword);
 
-      let tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      let tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'count'
         FROM ${AuthDbTables.TOKENS} t
         WHERE t.user_id = ${user.id}
@@ -2255,7 +2255,7 @@ describe('Auth service tests', () => {
       expect(updatedRes.status).toEqual(true);
       expect(await updatedRes.data.comparePassword(newPassword)).toEqual(true);
 
-      tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'count'
         FROM ${AuthDbTables.TOKENS} t
         WHERE t.user_id = ${user.id}
@@ -2263,7 +2263,7 @@ describe('Auth service tests', () => {
       );
       expect(tokens[0].count).toBe(0);
 
-      tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'count'
         FROM ${AuthDbTables.TOKENS} t
         WHERE t.user_id = ${user.id}
@@ -2331,7 +2331,7 @@ describe('Auth service tests', () => {
       await auth.grantRoles([role.id], user.id);
 
       const token = await auth.loginPin(user.PIN);
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
@@ -2372,7 +2372,7 @@ describe('Auth service tests', () => {
       await auth.grantRoles([role.id], user.id);
 
       const token = await auth.loginPin('2345');
-      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramQuery(
+      const tokens = await new MySqlUtil((await MySqlConnManager.getInstance().getConnection()) as Pool).paramExecute(
         `SELECT COUNT(*) AS 'COUNT' FROM ${AuthDbTables.TOKENS};`
       );
 
