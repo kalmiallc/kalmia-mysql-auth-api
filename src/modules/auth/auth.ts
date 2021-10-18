@@ -544,7 +544,7 @@ export class Auth {
           };
         }
 
-        rolePermission.populate(permission, PopulateFor.PROFILE);
+        rolePermission.populate(permission, PopulateFor.ALL);
         try {
           await rolePermission.validate();
         } catch (error) {

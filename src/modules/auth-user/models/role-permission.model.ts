@@ -24,7 +24,7 @@ export class RolePermission extends BaseModel {
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -40,7 +40,7 @@ export class RolePermission extends BaseModel {
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -56,7 +56,7 @@ export class RolePermission extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -71,8 +71,8 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.PROFILE],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.ALL],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -93,8 +93,8 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.PROFILE],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.ALL],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -115,8 +115,8 @@ export class RolePermission extends BaseModel {
    */
   @prop({
     parser: { resolver: integerParser() },
-    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.PROFILE],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
+    populatable: [PopulateFor.DB, PopulateFor.ADMIN, PopulateFor.ALL],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),

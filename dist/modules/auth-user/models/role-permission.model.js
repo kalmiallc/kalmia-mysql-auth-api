@@ -127,7 +127,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -141,7 +141,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -155,7 +155,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.stringParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -168,8 +168,8 @@ __decorate([
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
-        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN, kalmia_sql_lib_1.PopulateFor.PROFILE],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
+        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN, kalmia_sql_lib_1.PopulateFor.ALL],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -188,8 +188,8 @@ __decorate([
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
-        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN, kalmia_sql_lib_1.PopulateFor.PROFILE],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
+        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN, kalmia_sql_lib_1.PopulateFor.ALL],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -208,8 +208,8 @@ __decorate([
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
-        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN, kalmia_sql_lib_1.PopulateFor.PROFILE],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
+        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN, kalmia_sql_lib_1.PopulateFor.ALL],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),

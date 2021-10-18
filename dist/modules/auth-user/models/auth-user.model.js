@@ -390,7 +390,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -409,7 +409,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL],
         defaultValue: kalmia_sql_lib_1.DbModelStatus.ACTIVE
     }),
     __metadata("design:type", Number)
@@ -417,8 +417,8 @@ __decorate([
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.stringParser)() },
-        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.PROFILE],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
+        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ALL],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -440,8 +440,8 @@ __decorate([
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.stringParser)() },
-        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.PROFILE],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
+        populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ALL],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
         setter: (v) => (v ? v.toLowerCase().replace(' ', '') : v),
         validators: [
             {
@@ -495,7 +495,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: role_model_1.Role, array: true },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL],
         validators: [],
         defaultValue: () => []
     }),
@@ -505,7 +505,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: role_permission_model_1.RolePermission, array: true },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL],
         validators: [],
         defaultValue: () => []
     }),

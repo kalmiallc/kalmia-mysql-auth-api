@@ -482,7 +482,7 @@ class Auth {
                         errors: [types_1.AuthResourceNotFoundErrorCode.ROLE_PERMISSION_DOES_NOT_EXISTS]
                     };
                 }
-                rolePermission.populate(permission, kalmia_sql_lib_1.PopulateFor.PROFILE);
+                rolePermission.populate(permission, kalmia_sql_lib_1.PopulateFor.ALL);
                 try {
                     await rolePermission.validate();
                 }

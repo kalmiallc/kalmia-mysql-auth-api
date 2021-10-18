@@ -2,16 +2,7 @@
 import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { presenceValidator } from '@rawmodel/validators';
-import {
-  BaseModel,
-  DbModelStatus,
-  getQueryParams,
-  MySqlUtil,
-  PopulateFor,
-  selectAndCountQuery,
-  SerializeFor,
-  uniqueFieldWithIdValidator
-} from 'kalmia-sql-lib';
+import { BaseModel, getQueryParams, MySqlUtil, PopulateFor, selectAndCountQuery, SerializeFor, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
@@ -32,7 +23,7 @@ export class Role extends BaseModel {
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN]
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN]
   })
   public id: number;
 
@@ -42,7 +33,7 @@ export class Role extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -62,7 +53,7 @@ export class Role extends BaseModel {
   @prop({
     parser: { resolver: RolePermission, array: true },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.ADMIN],
+    serializable: [SerializeFor.ALL, SerializeFor.ADMIN],
     defaultValue: () => [],
     emptyValue: () => []
   })

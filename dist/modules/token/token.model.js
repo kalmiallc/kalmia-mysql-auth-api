@@ -13,12 +13,12 @@ exports.Token = void 0;
 /* eslint-disable @typescript-eslint/member-ordering */
 const core_1 = require("@rawmodel/core");
 const parsers_1 = require("@rawmodel/parsers");
-const kalmia_sql_lib_1 = require("kalmia-sql-lib");
-const types_1 = require("../../config/types");
-const jwt = require("jsonwebtoken");
-const env_1 = require("../../config/env");
-const uuid_1 = require("uuid"); // timestamp uuid
 const crypto_1 = require("crypto");
+const jwt = require("jsonwebtoken");
+const kalmia_sql_lib_1 = require("kalmia-sql-lib");
+const uuid_1 = require("uuid"); // timestamp uuid
+const env_1 = require("../../config/env");
+const types_1 = require("../../config/types");
 /**
  * JWT token model.
  */
@@ -214,7 +214,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
         validators: []
     }),
     __metadata("design:type", Number)
@@ -223,14 +223,14 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.stringParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.INSERT_DB]
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.INSERT_DB]
     }),
     __metadata("design:type", String)
 ], Token.prototype, "subject", void 0);
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.stringParser)() },
-        populatable: [kalmia_sql_lib_1.PopulateFor.PROFILE],
+        populatable: [kalmia_sql_lib_1.PopulateFor.ALL],
         serializable: [kalmia_sql_lib_1.SerializeFor.ADMIN]
     }),
     __metadata("design:type", Object)
@@ -239,7 +239,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.dateParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE]
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL]
     }),
     __metadata("design:type", Date)
 ], Token.prototype, "expiresAt", void 0);
@@ -247,7 +247,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.stringParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE]
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL]
     }),
     __metadata("design:type", String)
 ], Token.prototype, "token", void 0);

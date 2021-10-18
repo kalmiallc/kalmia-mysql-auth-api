@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
-import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
-import { AuthDbTables, AuthJwtTokenType } from '../../config/types';
-import * as jwt from 'jsonwebtoken';
-import { env } from '../../config/env';
-import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
-import { PoolConnection } from 'mysql2/promise';
 import { createHash } from 'crypto';
+import * as jwt from 'jsonwebtoken';
+import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { PoolConnection } from 'mysql2/promise';
+import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
+import { env } from '../../config/env';
+import { AuthDbTables, AuthJwtTokenType } from '../../config/types';
 
 /**
  * JWT token model.
@@ -24,7 +24,7 @@ export class Token extends BaseModel {
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB],
     validators: []
   })
   public user_id: number;
@@ -35,7 +35,7 @@ export class Token extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB]
+    serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB]
   })
   public subject: string;
 
@@ -44,7 +44,7 @@ export class Token extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [PopulateFor.PROFILE],
+    populatable: [PopulateFor.ALL],
     serializable: [SerializeFor.ADMIN]
   })
   public exp: string | number;
@@ -57,7 +57,7 @@ export class Token extends BaseModel {
   @prop({
     parser: { resolver: dateParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE]
+    serializable: [SerializeFor.ALL]
   })
   public expiresAt: Date;
 
@@ -68,7 +68,7 @@ export class Token extends BaseModel {
   @prop({
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE]
+    serializable: [SerializeFor.ALL]
   })
   public token: string;
 

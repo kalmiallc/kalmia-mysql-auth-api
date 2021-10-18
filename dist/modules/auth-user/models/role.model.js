@@ -259,7 +259,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN]
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN]
     }),
     __metadata("design:type", Number)
 ], Role.prototype, "id", void 0);
@@ -267,7 +267,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.stringParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB, kalmia_sql_lib_1.PopulateFor.ADMIN],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
         validators: [
             {
                 resolver: (0, validators_1.presenceValidator)(),
@@ -285,7 +285,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: role_permission_model_1.RolePermission, array: true },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.PROFILE, kalmia_sql_lib_1.SerializeFor.ADMIN],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.ADMIN],
         defaultValue: () => [],
         emptyValue: () => []
     }),

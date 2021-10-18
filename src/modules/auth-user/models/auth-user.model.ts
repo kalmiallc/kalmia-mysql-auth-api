@@ -47,7 +47,7 @@ export class AuthUser extends BaseModel {
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
+    serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -68,7 +68,7 @@ export class AuthUser extends BaseModel {
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE],
+    serializable: [SerializeFor.ALL],
     defaultValue: DbModelStatus.ACTIVE
   })
   public status: number;
@@ -78,8 +78,8 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [PopulateFor.DB, PopulateFor.PROFILE],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
+    populatable: [PopulateFor.DB, PopulateFor.ALL],
+    serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB],
     validators: [
       {
         resolver: presenceValidator(),
@@ -103,8 +103,8 @@ export class AuthUser extends BaseModel {
    */
   @prop({
     parser: { resolver: stringParser() },
-    populatable: [PopulateFor.DB, PopulateFor.PROFILE],
-    serializable: [SerializeFor.PROFILE, SerializeFor.INSERT_DB],
+    populatable: [PopulateFor.DB, PopulateFor.ALL],
+    serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB],
     setter: (v) => (v ? v.toLowerCase().replace(' ', '') : v),
     validators: [
       {
@@ -164,7 +164,7 @@ export class AuthUser extends BaseModel {
   @prop({
     parser: { resolver: Role, array: true },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE],
+    serializable: [SerializeFor.ALL],
     validators: [],
     defaultValue: () => []
   })
@@ -176,7 +176,7 @@ export class AuthUser extends BaseModel {
   @prop({
     parser: { resolver: RolePermission, array: true },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.PROFILE],
+    serializable: [SerializeFor.ALL],
     validators: [],
     defaultValue: () => []
   })

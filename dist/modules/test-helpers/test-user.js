@@ -10,7 +10,7 @@ const auth_user_model_1 = require("../auth-user/models/auth-user.model");
 async function insertAuthUser() {
     const user = new auth_user_model_1.AuthUser({}).fake();
     const res = await user.create();
-    return res.serialize(kalmia_sql_lib_1.SerializeFor.PROFILE);
+    return res.serialize(kalmia_sql_lib_1.SerializeFor.ALL);
 }
 exports.insertAuthUser = insertAuthUser;
 //# sourceMappingURL=test-user.js.map
