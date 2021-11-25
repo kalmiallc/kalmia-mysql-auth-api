@@ -18,7 +18,7 @@ async function upgrade(queryFn) {
     \`_updateTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     \`_updateUser\` INT NULL,
     PRIMARY KEY (\`role_id\`, \`permission_id\`),
-    INDEX \`fk_role_has_permission_role1_idx\` (\`role_id\` ASC) VISIBLE,
+    INDEX \`fk_role_has_permission_role1_idx\` (\`role_id\` ASC),
     CONSTRAINT \`fk_role_has_permission_role1\`
       FOREIGN KEY (\`role_id\`)
       REFERENCES \`${types_1.AuthDbTables.ROLES}\` (\`id\`)
