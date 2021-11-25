@@ -5,7 +5,7 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
   await queryFn(`
   CREATE TABLE IF NOT EXISTS \`${AuthDbTables.TOKENS}\` (
     \`id\` INT NOT NULL AUTO_INCREMENT,
-    \`status\` INT NOT NULL DEFAULT '${DbModelStatus.ACTIVE}',
+    \`status\` INT NOT NULL UNIQUE DEFAULT '${DbModelStatus.ACTIVE}',
     \`token\` VARCHAR(500) NULL,
     \`user_id\` INT NULL,
     \`subject\` VARCHAR(45) NOT NULL,
@@ -15,8 +15,7 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
     \`_updateTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     \`_updateUser\` INT NULL,
     PRIMARY KEY (\`id\`),
-    INDEX \`fk_token_user1_idx\` (\`user_id\` ASC) VISIBLE,
-    UNIQUE INDEX \`token_UNIQUE\` (\`token\` ASC) VISIBLE,
+    INDEX \`fk_token_user1_idx\` (\`user_id\` ASC),
     CONSTRAINT \`fk_token_user1\`
       FOREIGN KEY (\`user_id\`)
       REFERENCES \`${AuthDbTables.USERS}\` (\`id\`)

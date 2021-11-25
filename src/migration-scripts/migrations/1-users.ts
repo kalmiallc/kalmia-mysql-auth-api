@@ -14,9 +14,7 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
     \`_createUser\` INT NULL,
     \`_updateTime\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     \`_updateUser\` INT NULL,
-    PRIMARY KEY (\`id\`),
-    UNIQUE INDEX \`email_UNIQUE\` (\`email\` ASC) VISIBLE,
-    UNIQUE INDEX \`username_UNIQUE\` (\`username\` ASC) VISIBLE);
+    PRIMARY KEY (\`id\`));
   `);
 }
 

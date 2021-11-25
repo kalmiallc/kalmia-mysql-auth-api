@@ -6,8 +6,8 @@ export async function upgrade(queryFn: (query: string, values?: any[]) => Promis
     \`user_id\` INT NOT NULL,
     \`role_id\` INT NOT NULL,
     PRIMARY KEY (\`user_id\`, \`role_id\`),
-    INDEX \`fk_user_has_role_role1_idx\` (\`role_id\` ASC) VISIBLE,
-    INDEX \`fk_user_has_role_user_idx\` (\`user_id\` ASC) VISIBLE,
+    INDEX \`fk_user_has_role_role1_idx\` (\`role_id\` ASC),
+    INDEX \`fk_user_has_role_user_idx\` (\`user_id\` ASC),
     CONSTRAINT \`fk_user_has_role_user\`
       FOREIGN KEY (\`user_id\`)
       REFERENCES \`${AuthDbTables.USERS}\` (\`id\`)
