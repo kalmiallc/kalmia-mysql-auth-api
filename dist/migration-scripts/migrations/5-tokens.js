@@ -7,8 +7,8 @@ async function upgrade(queryFn) {
     await queryFn(`
   CREATE TABLE IF NOT EXISTS \`${types_1.AuthDbTables.TOKENS}\` (
     \`id\` INT NOT NULL AUTO_INCREMENT,
-    \`status\` INT NOT NULL UNIQUE DEFAULT '${kalmia_sql_lib_1.DbModelStatus.ACTIVE}',
-    \`token\` VARCHAR(500) NULL,
+    \`status\` INT NOT NULL DEFAULT '${kalmia_sql_lib_1.DbModelStatus.ACTIVE}',
+    \`token\` VARCHAR(500) UNIQUE NULL,
     \`user_id\` INT NULL,
     \`subject\` VARCHAR(45) NOT NULL,
     \`expiresAt\` DATETIME NULL,
