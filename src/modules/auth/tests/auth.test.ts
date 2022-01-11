@@ -1962,7 +1962,7 @@ describe('Auth service tests', () => {
         {
           permission: 1,
           type: PermissionType.EXECUTE,
-          level: PermissionLevel.OWN
+          level: PermissionLevel.ALL
         }
       ]);
 
