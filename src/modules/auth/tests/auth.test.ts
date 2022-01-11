@@ -1945,7 +1945,7 @@ describe('Auth service tests', () => {
       ]);
 
       const auth = Auth.getInstance();
-      await auth.grantRoles([roleOne.id, roleTwo.id], user.id);
+      await auth.grantRoles([roleOne.id], user.id);
 
       const canAccess = await auth.canAccess(user.id, [
         {
@@ -1955,7 +1955,18 @@ describe('Auth service tests', () => {
         }
       ]);
 
-      expect(canAccess.data).toBe(true);
+      expect(canAccess.data).toBe(false);
+
+      await auth.grantRoles([roleTwo.id], user.id);
+      const canAccess2 = await auth.canAccess(user.id, [
+        {
+          permission: 1,
+          type: PermissionType.EXECUTE,
+          level: PermissionLevel.OWN
+        }
+      ]);
+
+      expect(canAccess2.data).toBe(true);
     });
   });
 
