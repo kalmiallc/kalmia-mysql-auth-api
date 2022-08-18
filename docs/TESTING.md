@@ -40,7 +40,7 @@ To run the tests on docker, thw following commands shall be used (the access key
 sudo AUTH_REPO_ACCESS_KEY="$(cat kalmia-auth-repo-access.key)" docker-compose -f docker-compose.test.yaml --env-file ./.env.test build --force
 
 # run docker image
-sudo AUTH_REPO_ACCESS_KEY="$(cat kalmia-auth-repo-access.key)" docker-compose -f docker-compose.test.yaml --env-file ./.env.test up --force-recreate --abort-on-container-exit --exit-code-from api
+sudo docker-compose -f docker-compose.test.yaml --env-file ./.env.test up --force-recreate --abort-on-container-exit --exit-code-from api
 ```
 
 
