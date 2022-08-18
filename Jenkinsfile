@@ -137,7 +137,7 @@ pipeline {
       stage('Test build') {
           steps {
               sh '''
-               AUTH_REPO_ACCESS_KEY="$(cat kalmia-auth-repo-access.key)" docker-compose -f docker-compose.test.yaml up --env-file ./.env.test --force-recreate --abort-on-container-exit --exit-code-from api
+               docker-compose -f docker-compose.test.yaml --env-file ./.env.test up --force-recreate --abort-on-container-exit --exit-code-from api
               '''
           }
           post {
