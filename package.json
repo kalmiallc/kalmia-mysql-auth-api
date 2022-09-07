@@ -1,6 +1,6 @@
 {
   "name": "kalmia-mysql-auth-api",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "MySQL auth package for Kalmia.",
   "main": "dist/index.js",
   "scripts": {
