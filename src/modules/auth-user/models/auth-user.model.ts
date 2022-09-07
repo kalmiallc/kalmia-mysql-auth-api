@@ -68,7 +68,7 @@ export class AuthUser extends BaseModel {
   @prop({
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.ALL],
+    serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     defaultValue: DbModelStatus.ACTIVE
   })
   public status: number;

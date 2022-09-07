@@ -409,7 +409,7 @@ __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
         populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.ALL],
+        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.INSERT_DB, kalmia_sql_lib_1.SerializeFor.UPDATE_DB],
         defaultValue: kalmia_sql_lib_1.DbModelStatus.ACTIVE
     }),
     __metadata("design:type", Number)
