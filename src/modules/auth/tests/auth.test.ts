@@ -1777,7 +1777,8 @@ describe('Auth service tests', () => {
       expect(user.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT]));
     });
 
-    it('Should not create auth user with invalid username', async () => {
+    // we don't do username validation -- username can be email.
+    it.skip('Should not create auth user with invalid username', async () => {
       const auth = Auth.getInstance();
 
       const obj = {
