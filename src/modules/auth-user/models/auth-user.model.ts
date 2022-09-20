@@ -87,10 +87,6 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT
       },
       {
-        resolver: (v?: any) => !emailValidator()(v),
-        code: AuthValidatorErrorCode.USER_USERNAME_NOT_VALID
-      },
-      {
         resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'username'),
         code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
       }

@@ -426,10 +426,6 @@ __decorate([
                 code: types_1.AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT
             },
             {
-                resolver: (v) => !(0, validators_1.emailValidator)()(v),
-                code: types_1.AuthValidatorErrorCode.USER_USERNAME_NOT_VALID
-            },
-            {
                 resolver: (0, kalmia_sql_lib_1.uniqueFieldWithIdValidator)(types_1.AuthDbTables.USERS, 'username'),
                 code: types_1.AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
             }
