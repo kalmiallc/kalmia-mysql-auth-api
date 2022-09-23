@@ -6,7 +6,7 @@ const types_1 = require("../../config/types");
 async function upgrade(queryFn) {
     await queryFn(`
   CREATE TABLE IF NOT EXISTS \`${types_1.AuthDbTables.USERS}\` (
-    \`id\` INT NOT NULL,
+    \`id\` INT NOT NULL AUTO_INCREMENT,
     \`status\` INT NOT NULL DEFAULT '${kalmia_sql_lib_1.DbModelStatus.ACTIVE}',
     \`username\` VARCHAR(50) NOT NULL UNIQUE,
     \`email\` VARCHAR(255) NULL UNIQUE,

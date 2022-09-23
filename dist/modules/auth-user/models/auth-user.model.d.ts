@@ -13,10 +13,6 @@ export declare class AuthUser extends BaseModel {
      */
     tableName: AuthDbTables;
     /**
-     * Auth user's id property definition
-     */
-    id: number;
-    /**
      * Auth user's status property definition
      */
     status: number;

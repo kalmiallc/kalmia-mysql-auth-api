@@ -14,23 +14,12 @@ exports.AuthUser = void 0;
 /* eslint-disable @typescript-eslint/member-ordering */
 const core_1 = require("@rawmodel/core");
 const parsers_1 = require("@rawmodel/parsers");
-const utils_1 = require("@rawmodel/utils");
 const validators_1 = require("@rawmodel/validators");
 const bcrypt = require("bcryptjs");
 const kalmia_sql_lib_1 = require("kalmia-sql-lib");
 const types_1 = require("../../../config/types");
 const role_permission_model_1 = require("./role-permission.model");
 const role_model_1 = require("./role.model");
-/**
- * Validates uniqueness of the ID field if model was not created yet.
- * @returns boolean
- */
-const conditionalIdUniqueFieldValidator = () => async function (value) {
-    if (!(0, utils_1.isPresent)(this._createTime)) {
-        return (0, kalmia_sql_lib_1.uniqueFieldValidator)(types_1.AuthDbTables.USERS, 'id')(value);
-    }
-    return true;
-};
 /**
  * Generates random digit - used for PIN number generation.
  * @returns Random digit.
@@ -386,25 +375,6 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
         return this;
     }
 }
-__decorate([
-    (0, core_1.prop)({
-        parser: { resolver: (0, parsers_1.integerParser)() },
-        populatable: [kalmia_sql_lib_1.PopulateFor.DB],
-        serializable: [kalmia_sql_lib_1.SerializeFor.ALL, kalmia_sql_lib_1.SerializeFor.INSERT_DB],
-        validators: [
-            {
-                resolver: (0, validators_1.presenceValidator)(),
-                code: types_1.AuthValidatorErrorCode.USER_ID_NOT_PRESENT
-            },
-            {
-                resolver: conditionalIdUniqueFieldValidator(),
-                code: types_1.AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
-            }
-        ],
-        fakeValue: () => Math.floor(Math.random() * 10000)
-    }),
-    __metadata("design:type", Number)
-], AuthUser.prototype, "id", void 0);
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
