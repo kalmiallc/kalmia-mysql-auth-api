@@ -2,27 +2,14 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
-import { isPresent } from '@rawmodel/utils';
 import { emailValidator, presenceValidator, stringLengthValidator } from '@rawmodel/validators';
 import * as bcrypt from 'bcryptjs';
-import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldValidator, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
+import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
 import { RolePermission } from './role-permission.model';
 import { Role } from './role.model';
-
-/**
- * Validates uniqueness of the ID field if model was not created yet.
- * @returns boolean
- */
-const conditionalIdUniqueFieldValidator = () =>
-  async function (this: AuthUser, value: any): Promise<boolean> {
-    if (!isPresent(this._createTime)) {
-      return uniqueFieldValidator(AuthDbTables.USERS, 'id')(value);
-    }
-    return true;
-  };
 
 /**
  * Generates random digit - used for PIN number generation.
@@ -41,26 +28,7 @@ export class AuthUser extends BaseModel {
    */
   tableName = AuthDbTables.USERS;
 
-  /**
-   * Auth user's id property definition
-   */
-  @prop({
-    parser: { resolver: integerParser() },
-    populatable: [PopulateFor.DB],
-    serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB],
-    validators: [
-      {
-        resolver: presenceValidator(),
-        code: AuthValidatorErrorCode.USER_ID_NOT_PRESENT
-      },
-      {
-        resolver: conditionalIdUniqueFieldValidator(),
-        code: AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN
-      }
-    ],
-    fakeValue: () => Math.floor(Math.random() * 10_000)
-  })
-  public id: number;
+  // Id is ihnerited from BaseModel. There is no special validation.
 
   /**
    * Auth user's status property definition

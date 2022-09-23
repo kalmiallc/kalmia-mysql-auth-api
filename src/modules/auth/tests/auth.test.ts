@@ -78,19 +78,18 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
       const user = await auth.createAuthUser(obj);
-      const deletedUser = await auth.deleteAuthUser(user.data.id);
-      delete obj.password;
+      const deletedUser = await auth.deleteAuthUser(user?.data?.id);
+      delete obj?.password;
 
       expect(deletedUser.data).toEqual(expect.objectContaining(obj));
-      expect(deletedUser.data.status).toBe(DbModelStatus.DELETED);
+      expect(deletedUser?.data.status).toBe(DbModelStatus.DELETED);
 
-      const noAuthUser = await auth.getAuthUserById(user.data.id);
+      const noAuthUser = await auth.getAuthUserById(user?.data?.id);
       expect(noAuthUser.status).toEqual(false);
       expect(noAuthUser.errors).toEqual(expect.arrayContaining([AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]));
     });
@@ -1058,7 +1057,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
@@ -1564,7 +1562,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const userData = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -1574,7 +1571,7 @@ describe('Auth service tests', () => {
       expect(res.status).toBe(true);
 
       const user = res.data;
-      expect(user.id).toBe(userData.id);
+      expect(user.id).toBeDefined();
       expect(user.username).toBe(userData.username);
       expect(user.email).toBe(userData.email);
       expect(user._createTime).not.toBeNull();
@@ -1589,7 +1586,6 @@ describe('Auth service tests', () => {
 
       const res = await auth.createAuthUser({} as any);
       expect(res.status).toBe(false);
-      expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_ID_NOT_PRESENT]));
       expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PASSWORD_NOT_PRESENT]));
       expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT]));
     });
@@ -1598,7 +1594,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const userData = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password(),
@@ -1609,7 +1604,7 @@ describe('Auth service tests', () => {
       expect(res.status).toBe(true);
 
       const user = res.data;
-      expect(user.id).toBe(userData.id);
+      expect(user.id).toBeDefined();
       expect(user.username).toBe(userData.username);
       expect(user.email).toBe(userData.email);
       expect(user.PIN).toBe(userData.PIN);
@@ -1625,7 +1620,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const userData1 = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password(),
@@ -1635,7 +1629,6 @@ describe('Auth service tests', () => {
       expect(res1.status).toBe(true);
 
       const userData2 = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password(),
@@ -1651,7 +1644,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const userData1 = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -1660,7 +1652,6 @@ describe('Auth service tests', () => {
       expect(res1.status).toBe(true);
 
       const userData2 = {
-        id: faker.datatype.number(10_000_000),
         username: userData1.username,
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -1675,7 +1666,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const userData1 = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -1684,7 +1674,6 @@ describe('Auth service tests', () => {
       expect(res1.status).toBe(true);
 
       const userData2 = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: userData1.email,
         password: faker.internet.password()
@@ -1695,35 +1684,10 @@ describe('Auth service tests', () => {
       expect(res2.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN]));
     });
 
-    it('Should not create two auth users with the same ID', async () => {
-      const auth = Auth.getInstance();
-
-      const userData1 = {
-        id: faker.datatype.number(10_000_000),
-        username: faker.internet.userName(),
-        email: faker.internet.email().toLowerCase(),
-        password: faker.internet.password()
-      };
-      const res1 = await auth.createAuthUser(userData1);
-      expect(res1.status).toBe(true);
-
-      const userData2 = {
-        id: userData1.id,
-        username: faker.internet.userName(),
-        email: faker.internet.email().toLowerCase(),
-        password: faker.internet.password()
-      };
-
-      const res2 = await auth.createAuthUser(userData2);
-      expect(res2.status).toBe(false);
-      expect(res2.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_ID_ALREADY_TAKEN]));
-    });
-
     it('Should not create auth user with too short or too long PIN', async () => {
       const auth = Auth.getInstance();
 
       let userData = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password(),
@@ -1734,7 +1698,6 @@ describe('Auth service tests', () => {
       expect(res.errors).toEqual(expect.arrayContaining([AuthValidatorErrorCode.USER_PIN_NOT_CORRECT_LENGTH]));
 
       userData = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password(),
@@ -1751,7 +1714,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj: any = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         password: faker.internet.password()
       };
@@ -1766,7 +1728,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj: any = {
-        id: faker.datatype.number(10_000_000),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
       };
@@ -1782,7 +1743,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.email().toLowerCase(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -1798,7 +1758,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.userName(),
         password: faker.internet.password()
@@ -1814,7 +1773,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj: any = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase()
       };
@@ -1976,7 +1934,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -2010,7 +1967,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
@@ -2038,7 +1994,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -2072,7 +2027,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -2100,7 +2054,6 @@ describe('Auth service tests', () => {
       const auth = Auth.getInstance();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -2131,7 +2084,6 @@ describe('Auth service tests', () => {
       const newUsername = 'new_username';
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -2158,7 +2110,6 @@ describe('Auth service tests', () => {
 
       const existingUser = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
@@ -2167,7 +2118,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
@@ -2184,7 +2134,6 @@ describe('Auth service tests', () => {
       const newEmail = faker.internet.email().toLowerCase();
 
       const obj = {
-        id: faker.datatype.number(10_000_000),
         username: faker.internet.userName(),
         email: faker.internet.email().toLowerCase(),
         password: faker.internet.password()
@@ -2211,7 +2160,6 @@ describe('Auth service tests', () => {
 
       const existingUser = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
@@ -2220,7 +2168,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password()
@@ -2242,7 +2189,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: username,
           email: faker.internet.email().toLowerCase(),
           password: currentPassword
@@ -2291,7 +2237,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: currentPassword
@@ -2310,7 +2255,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: currentPassword
@@ -2329,7 +2273,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password(),
@@ -2370,7 +2313,6 @@ describe('Auth service tests', () => {
 
       const user = (
         await auth.createAuthUser({
-          id: faker.datatype.number(10_000_000),
           username: faker.internet.userName(),
           email: faker.internet.email().toLowerCase(),
           password: faker.internet.password(),

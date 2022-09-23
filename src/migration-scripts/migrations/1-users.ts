@@ -4,7 +4,7 @@ import { AuthDbTables } from '../../config/types';
 export async function upgrade(queryFn: (query: string, values?: any[]) => Promise<any[]>): Promise<void> {
   await queryFn(`
   CREATE TABLE IF NOT EXISTS \`${AuthDbTables.USERS}\` (
-    \`id\` INT NOT NULL,
+    \`id\` INT NOT NULL AUTO_INCREMENT,
     \`status\` INT NOT NULL DEFAULT '${DbModelStatus.ACTIVE}',
     \`username\` VARCHAR(50) NOT NULL UNIQUE,
     \`email\` VARCHAR(255) NULL UNIQUE,
