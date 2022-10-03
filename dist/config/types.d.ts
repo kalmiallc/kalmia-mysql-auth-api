@@ -96,7 +96,8 @@ export declare enum AuthJwtTokenType {
     USER_SIGN_UP = "USER_SIGN_UP",
     USER_RESET_EMAIL = "USER_RESET_EMAIL",
     USER_RESET_USERNAME = "USER_RESET_USERNAME",
-    USER_RESET_PASSWORD = "USER_RESET_PASSWORD"
+    USER_RESET_PASSWORD = "USER_RESET_PASSWORD",
+    USER_LOGIN_MAGIC = "USER_LOGIN_MAGIC"
 }
 export declare const AuthServiceErrorPrefix = 100;
 //# sourceMappingURL=types.d.ts.map

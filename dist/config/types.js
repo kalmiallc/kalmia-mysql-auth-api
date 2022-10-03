@@ -110,6 +110,7 @@ var AuthJwtTokenType;
     AuthJwtTokenType["USER_RESET_EMAIL"] = "USER_RESET_EMAIL";
     AuthJwtTokenType["USER_RESET_USERNAME"] = "USER_RESET_USERNAME";
     AuthJwtTokenType["USER_RESET_PASSWORD"] = "USER_RESET_PASSWORD";
+    AuthJwtTokenType["USER_LOGIN_MAGIC"] = "USER_LOGIN_MAGIC";
 })(AuthJwtTokenType = exports.AuthJwtTokenType || (exports.AuthJwtTokenType = {}));
 exports.AuthServiceErrorPrefix = 100;
 //# sourceMappingURL=types.js.map

@@ -58,6 +58,24 @@ class Auth {
         };
     }
     /**
+     * Gets auth user by user username.
+     * @param username if of user to search by
+     * @returns AuthUser with matching username
+     */
+    async getAuthUserByUsername(username) {
+        const user = await new __1.AuthUser().populateByUsername(username);
+        if (!user.exists()) {
+            return {
+                status: false,
+                errors: [types_1.AuthResourceNotFoundErrorCode.AUTH_USER_DOES_NOT_EXISTS]
+            };
+        }
+        return {
+            status: true,
+            data: user
+        };
+    }
+    /**
      * Add chosen roles to the user.
      * @param roleIds List of role IDs.
      * @param userId User's ID.

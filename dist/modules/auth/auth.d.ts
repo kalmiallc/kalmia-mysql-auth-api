@@ -30,6 +30,12 @@ export declare class Auth {
      */
     getAuthUserByEmail(email: string): Promise<IAuthResponse<AuthUser>>;
     /**
+     * Gets auth user by user username.
+     * @param username if of user to search by
+     * @returns AuthUser with matching username
+     */
+    getAuthUserByUsername(username: string): Promise<IAuthResponse<AuthUser>>;
+    /**
      * Add chosen roles to the user.
      * @param roleIds List of role IDs.
      * @param userId User's ID.
