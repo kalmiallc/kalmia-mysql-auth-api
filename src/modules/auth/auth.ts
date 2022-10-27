@@ -1,4 +1,5 @@
 import { MySqlConnManager, MySqlUtil, PopulateFor } from 'kalmia-sql-lib';
+import { PoolConnection } from 'mysql2/promise';
 import { AuthUser } from '../..';
 import {
   AuthAuthenticationErrorCode,
@@ -267,14 +268,14 @@ export class Auth {
    * @param exp (optional) how long until the newly generated token expires, defaults to '1d'
    * @returns JWT
    */
-  async generateToken(data: any, subject: string, userId?: number, exp?: any): Promise<IAuthResponse<string>> {
+  async generateToken(data: any, subject: string, userId?: number, exp?: any, conn?: PoolConnection): Promise<IAuthResponse<string>> {
     const token = new Token({
       payload: data,
       subject,
       user_id: userId
     });
 
-    const tokenString = await token.generate(exp);
+    const tokenString = await token.generate(exp, conn);
     if (tokenString) {
       return {
         status: true,

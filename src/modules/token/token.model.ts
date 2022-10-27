@@ -3,7 +3,7 @@ import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
 import { createHash } from 'crypto';
 import * as jwt from 'jsonwebtoken';
-import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
 import { env } from '../../config/env';
@@ -99,7 +99,9 @@ export class Token extends BaseModel {
    * @param exp (optional) Time until expiration. Defaults to '1d'
    * @returns JWT
    */
-  public async generate(exp: string | number = '1d'): Promise<string> {
+  public async generate(exp: string | number = '1d', connection?: PoolConnection): Promise<string> {
+    const { singleTrans, sql, conn } = await this.getDbConnection(connection);
+
     try {
       if (!exp) {
         exp = '1d';
@@ -129,10 +131,8 @@ export class Token extends BaseModel {
       const createQuery = `INSERT INTO \`${this.tableName}\` (token, status, user_id, subject, expiresAt)
       VALUES
         (@token, @status, @user_id, @subject, @expiresAt)`;
-      const sqlUtil = new MySqlUtil(await this.db());
-      const conn = await sqlUtil.start();
 
-      await sqlUtil.paramExecute(
+      await sql.paramExecute(
         createQuery,
         {
           token: this._tokenHash,
@@ -143,12 +143,17 @@ export class Token extends BaseModel {
         },
         conn
       );
-      const req = await sqlUtil.paramExecute('SELECT last_insert_id() AS id;', null, conn);
+      const req = await sql.paramExecute('SELECT last_insert_id() AS id;', null, conn);
       this.id = req[0].id;
 
-      await sqlUtil.commit(conn);
+      if (singleTrans) {
+        await sql.commit(conn);
+      }
       return this.token;
     } catch (e) {
+      if (singleTrans) {
+        await sql.rollback(conn);
+      }
       return null;
     }
   }
@@ -215,12 +220,11 @@ export class Token extends BaseModel {
    * Marks token as invalid in the database.
    * @returns boolean, whether the operation was successful or not.
    */
-  public async invalidateToken(): Promise<boolean> {
-    const sqlUtil = new MySqlUtil(await this.db());
-    const conn = await sqlUtil.start();
+  public async invalidateToken(connection?: PoolConnection): Promise<boolean> {
+    const { singleTrans, sql, conn } = await this.getDbConnection(connection);
 
     try {
-      await sqlUtil.paramExecute(
+      await sql.paramExecute(
         `UPDATE \`${AuthDbTables.TOKENS}\`  t
         SET t.status = ${DbModelStatus.DELETED}
         WHERE t.token = @token`,
@@ -231,10 +235,14 @@ export class Token extends BaseModel {
       );
 
       this.status = DbModelStatus.DELETED;
-      await sqlUtil.commit(conn);
+      if (singleTrans) {
+        await sql.commit(conn);
+      }
       return true;
     } catch (error) {
-      await sqlUtil.rollback(conn);
+      if (singleTrans) {
+        await sql.rollback(conn);
+      }
     }
     return false;
   }
