@@ -35,7 +35,8 @@ class Token extends kalmia_sql_lib_1.BaseModel {
      * @param exp (optional) Time until expiration. Defaults to '1d'
      * @returns JWT
      */
-    async generate(exp = '1d') {
+    async generate(exp = '1d', connection) {
+        const { singleTrans, sql, conn } = await this.getDbConnection(connection);
         try {
             if (!exp) {
                 exp = '1d';
@@ -54,21 +55,24 @@ class Token extends kalmia_sql_lib_1.BaseModel {
             const createQuery = `INSERT INTO \`${this.tableName}\` (token, status, user_id, subject, expiresAt)
       VALUES
         (@token, @status, @user_id, @subject, @expiresAt)`;
-            const sqlUtil = new kalmia_sql_lib_1.MySqlUtil(await this.db());
-            const conn = await sqlUtil.start();
-            await sqlUtil.paramExecute(createQuery, {
+            await sql.paramExecute(createQuery, {
                 token: this._tokenHash,
                 user_id: this.user_id,
                 subject: this.subject,
                 expiresAt: this.expiresAt,
                 status: kalmia_sql_lib_1.DbModelStatus.ACTIVE
             }, conn);
-            const req = await sqlUtil.paramExecute('SELECT last_insert_id() AS id;', null, conn);
+            const req = await sql.paramExecute('SELECT last_insert_id() AS id;', null, conn);
             this.id = req[0].id;
-            await sqlUtil.commit(conn);
+            if (singleTrans) {
+                await sql.commit(conn);
+            }
             return this.token;
         }
         catch (e) {
+            if (singleTrans) {
+                await sql.rollback(conn);
+            }
             return null;
         }
     }
@@ -123,21 +127,24 @@ class Token extends kalmia_sql_lib_1.BaseModel {
      * Marks token as invalid in the database.
      * @returns boolean, whether the operation was successful or not.
      */
-    async invalidateToken() {
-        const sqlUtil = new kalmia_sql_lib_1.MySqlUtil(await this.db());
-        const conn = await sqlUtil.start();
+    async invalidateToken(connection) {
+        const { singleTrans, sql, conn } = await this.getDbConnection(connection);
         try {
-            await sqlUtil.paramExecute(`UPDATE \`${types_1.AuthDbTables.TOKENS}\`  t
+            await sql.paramExecute(`UPDATE \`${types_1.AuthDbTables.TOKENS}\`  t
         SET t.status = ${kalmia_sql_lib_1.DbModelStatus.DELETED}
         WHERE t.token = @token`, {
                 token: this._tokenHash
             }, conn);
             this.status = kalmia_sql_lib_1.DbModelStatus.DELETED;
-            await sqlUtil.commit(conn);
+            if (singleTrans) {
+                await sql.commit(conn);
+            }
             return true;
         }
         catch (error) {
-            await sqlUtil.rollback(conn);
+            if (singleTrans) {
+                await sql.rollback(conn);
+            }
         }
         return false;
     }

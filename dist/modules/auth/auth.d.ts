@@ -1,3 +1,4 @@
+import { PoolConnection } from 'mysql2/promise';
 import { AuthUser } from '../..';
 import { AuthJwtTokenType } from '../../config/types';
 import { IAuthUser } from '../auth-user/interfaces/auth-user.interface';
@@ -69,7 +70,7 @@ export declare class Auth {
      * @param exp (optional) how long until the newly generated token expires, defaults to '1d'
      * @returns JWT
      */
-    generateToken(data: any, subject: string, userId?: number, exp?: any): Promise<IAuthResponse<string>>;
+    generateToken(data: any, subject: string, userId?: number, exp?: any, conn?: PoolConnection): Promise<IAuthResponse<string>>;
     /**
      * Invalidates the provided token in the database.
      * @param token Token to be invalidated

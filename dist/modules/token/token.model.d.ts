@@ -48,7 +48,7 @@ export declare class Token extends BaseModel {
      * @param exp (optional) Time until expiration. Defaults to '1d'
      * @returns JWT
      */
-    generate(exp?: string | number): Promise<string>;
+    generate(exp?: string | number, connection?: PoolConnection): Promise<string>;
     /**
      * If token in this.token exists in the database and is valid, returns a token with the same payload and refreshed expiration.
      * Expiration duration is the same as that of the original token.
@@ -65,7 +65,7 @@ export declare class Token extends BaseModel {
      * Marks token as invalid in the database.
      * @returns boolean, whether the operation was successful or not.
      */
-    invalidateToken(): Promise<boolean>;
+    invalidateToken(connection?: PoolConnection): Promise<boolean>;
     /**
      * Invalidates all of the user's tokens with a specific subject.
      * @param userId User's ID.

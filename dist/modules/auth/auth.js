@@ -229,13 +229,13 @@ class Auth {
      * @param exp (optional) how long until the newly generated token expires, defaults to '1d'
      * @returns JWT
      */
-    async generateToken(data, subject, userId, exp) {
+    async generateToken(data, subject, userId, exp, conn) {
         const token = new token_model_1.Token({
             payload: data,
             subject,
             user_id: userId
         });
-        const tokenString = await token.generate(exp);
+        const tokenString = await token.generate(exp, conn);
         if (tokenString) {
             return {
                 status: true,
