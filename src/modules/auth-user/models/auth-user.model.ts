@@ -185,6 +185,7 @@ export class AuthUser extends BaseModel {
       `
         SELECT * FROM ${this.tableName}
         WHERE email = @email
+        ORDER BY status ASC, _createTime DESC, _updateTime DESC
       `,
       { email }
     );
@@ -211,6 +212,7 @@ export class AuthUser extends BaseModel {
       `
           SELECT * FROM ${this.tableName}
           WHERE username = @username
+          ORDER BY status ASC, _createTime DESC, _updateTime DESC
         `,
       { username }
     );
@@ -237,6 +239,7 @@ export class AuthUser extends BaseModel {
       `
             SELECT * FROM ${this.tableName}
             WHERE PIN = @pin
+            ORDER BY status ASC, _createTime DESC, _updateTime DESC
           `,
       { pin }
     );

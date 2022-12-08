@@ -65,6 +65,7 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
         const res = await new kalmia_sql_lib_1.MySqlUtil(await this.db()).paramExecute(`
         SELECT * FROM ${this.tableName}
         WHERE email = @email
+        ORDER BY status ASC, _createTime DESC, _updateTime DESC
       `, { email });
         if (!res.length) {
             return this.reset();
@@ -84,6 +85,7 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
         const res = await new kalmia_sql_lib_1.MySqlUtil(await this.db()).paramExecute(`
           SELECT * FROM ${this.tableName}
           WHERE username = @username
+          ORDER BY status ASC, _createTime DESC, _updateTime DESC
         `, { username });
         if (!res.length) {
             return this.reset();
@@ -103,6 +105,7 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
         const res = await new kalmia_sql_lib_1.MySqlUtil(await this.db()).paramExecute(`
             SELECT * FROM ${this.tableName}
             WHERE PIN = @pin
+            ORDER BY status ASC, _createTime DESC, _updateTime DESC
           `, { pin });
         if (!res.length) {
             return this.reset();
