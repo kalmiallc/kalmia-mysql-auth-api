@@ -4,7 +4,15 @@ import { prop } from '@rawmodel/core';
 import { integerParser, stringParser } from '@rawmodel/parsers';
 import { emailValidator, presenceValidator, stringLengthValidator } from '@rawmodel/validators';
 import * as bcrypt from 'bcryptjs';
-import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor, uniqueFieldWithIdValidator } from 'kalmia-sql-lib';
+import {
+  BaseModel,
+  DbModelStatus,
+  MySqlUtil,
+  PopulateFor,
+  SerializeFor,
+  existingModelFieldUniquenessValidator,
+  uniqueFieldWithIdValidator
+} from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthValidatorErrorCode } from '../../../config/types';
 import { PermissionPass } from '../../auth/interfaces/permission-pass.interface';
@@ -55,7 +63,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_USERNAME_NOT_PRESENT
       },
       {
-        resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'username'),
+        resolver: existingModelFieldUniquenessValidator(AuthDbTables.USERS, 'username'),
         code: AuthValidatorErrorCode.USER_USERNAME_ALREADY_TAKEN
       }
     ],
@@ -77,7 +85,7 @@ export class AuthUser extends BaseModel {
         code: AuthValidatorErrorCode.USER_EMAIL_NOT_VALID
       },
       {
-        resolver: uniqueFieldWithIdValidator(AuthDbTables.USERS, 'email'),
+        resolver: existingModelFieldUniquenessValidator(AuthDbTables.USERS, 'email'),
         code: AuthValidatorErrorCode.USER_EMAIL_ALREADY_TAKEN
       }
     ],
