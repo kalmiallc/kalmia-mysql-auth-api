@@ -1,6 +1,13 @@
 # Kalmia My SQL Auth API
 This package contains core elements of the Kalmia MySQL Auth API. 
 
+
+## Public branch
+
+This library also contains public branch. The public branch is separated for the internal and resides in the github. 
+The public branch is a separate non-related branch. To commit changes to public branch, each commit must be cherry-picked.
+Don't use the merge-feature as it will also move some private keys to the public.
+
 ## Requirements
 
 * NPM > v7.20.x
