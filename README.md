@@ -1,5 +1,7 @@
 # Kalmia MySQL Auth API
+
 This package contains core elements of the Kalmia MySQL Auth API.
+Basic entry point for the library is auth.ts. Examine tests for the usage examples.
 
 This package must be build, and the dist folder is committed. It is done this way because of the NPM build problems.
 To release a new version, npm build must be done (don't forget to update the version in the package.json)
