@@ -1,6 +1,6 @@
 {
   "name": "kalmia-mysql-auth-api",
-  "version": "1.0.5",
+  "version": "2.0.0",
   "description": "MySQL auth package for Kalmia.",
   "main": "dist/index.js",
   "scripts": {
@@ -59,7 +59,7 @@
     "jsonwebtoken": "^8.5.1",
     "kalmia-sql-lib": "git+https://github.com/kalmiallc/kalmia-sql-lib.git",
     "kalmia-common-lib": "git+https://github.com/kalmiallc/kalmia-common-lib",
-    "mysql2": "^2.2.5",
+    "mysql2": "^3.2.3",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^5.0.0",
     "uuid": "^8.3.2"
@@ -69,6 +69,6 @@
     "@rawmodel/parsers": "^3.3.4",
     "@rawmodel/validators": "^3.3.4",
     "dotenv": "^16.0.3",
-    "mysql2": "^2.2.5"
+    "mysql2": "^3.2.3"
   }
 }
