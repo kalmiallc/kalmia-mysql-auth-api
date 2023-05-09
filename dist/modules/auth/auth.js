@@ -597,7 +597,7 @@ class Auth {
      * @param password User's password
      * @returns Authentication JWT
      */
-    async loginEmail(email, password) {
+    async loginEmail(email, password, exp) {
         const user = await new __1.AuthUser({}).populateByEmail(email);
         if (!user.exists()) {
             return {
@@ -606,7 +606,7 @@ class Auth {
             };
         }
         if (await user.comparePassword(password)) {
-            return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id);
+            return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp);
         }
         else {
             return {
@@ -621,7 +621,7 @@ class Auth {
      * @param password User's password
      * @returns Authentication JWT
      */
-    async loginUsername(username, password) {
+    async loginUsername(username, password, exp) {
         const user = await new __1.AuthUser({}).populateByUsername(username);
         if (!user.exists()) {
             return {
@@ -630,7 +630,7 @@ class Auth {
             };
         }
         if (await user.comparePassword(password)) {
-            return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id);
+            return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp);
         }
         else {
             return {
@@ -646,7 +646,7 @@ class Auth {
      * @param pin User's PIN number.
      * @returns Authentication JWT
      */
-    async loginPin(pin) {
+    async loginPin(pin, exp) {
         const user = await new __1.AuthUser({}).populateByPin(pin);
         if (!user.exists()) {
             return {
@@ -654,7 +654,7 @@ class Auth {
                 errors: [types_1.AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
             };
         }
-        return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id);
+        return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp);
     }
     /**
      * Creates auth user with provided data.
