@@ -143,14 +143,14 @@ export declare class Auth {
      * @param password User's password
      * @returns Authentication JWT
      */
-    loginEmail(email: string, password: string, exp?: string | number): Promise<IAuthResponse<string>>;
+    loginEmail(email: string, password: string): Promise<IAuthResponse<string>>;
     /**
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * @param username User's username
      * @param password User's password
      * @returns Authentication JWT
      */
-    loginUsername(username: string, password: string, exp?: string | number): Promise<IAuthResponse<string>>;
+    loginUsername(username: string, password: string): Promise<IAuthResponse<string>>;
     /**
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * This function should be limited by the origin calling function by user's permissions.
@@ -158,7 +158,7 @@ export declare class Auth {
      * @param pin User's PIN number.
      * @returns Authentication JWT
      */
-    loginPin(pin: string, exp?: string | number): Promise<IAuthResponse<string>>;
+    loginPin(pin: string): Promise<IAuthResponse<string>>;
     /**
      * Creates auth user with provided data.
      *
