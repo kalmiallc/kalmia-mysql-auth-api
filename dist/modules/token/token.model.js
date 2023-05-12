@@ -15,6 +15,7 @@ const core_1 = require("@rawmodel/core");
 const parsers_1 = require("@rawmodel/parsers");
 const crypto_1 = require("crypto");
 const jwt = require("jsonwebtoken");
+const kalmia_common_lib_1 = require("kalmia-common-lib");
 const kalmia_sql_lib_1 = require("kalmia-sql-lib");
 const uuid_1 = require("uuid"); // timestamp uuid
 const env_1 = require("../../config/env");
@@ -37,6 +38,14 @@ class Token extends kalmia_sql_lib_1.BaseModel {
      */
     async generate(exp = '1d', connection) {
         const { singleTrans, sql, conn } = await this.getDbConnection(connection);
+        const algorithm = env_1.env.RSA_JWT_PK ? 'RS256' : null;
+        const options = {
+            subject: this.subject,
+            expiresIn: exp,
+        };
+        if (algorithm) {
+            options.algorithm = algorithm;
+        }
         try {
             if (!exp) {
                 exp = '1d';
@@ -44,10 +53,7 @@ class Token extends kalmia_sql_lib_1.BaseModel {
             if (!this.user_id) {
                 this.user_id = null;
             }
-            this.token = jwt.sign(Object.assign(Object.assign({}, this.payload), { tokenUuid: (0, uuid_1.v1)() }), env_1.env.APP_SECRET, {
-                subject: this.subject,
-                expiresIn: exp
-            });
+            this.token = jwt.sign(Object.assign(Object.assign({}, this.payload), { tokenUuid: (0, uuid_1.v1)() }), env_1.env.RSA_JWT_PK || env_1.env.APP_SECRET, options);
             // Get expiration date.
             const payload = jwt.decode(this.token);
             this.expiresAt = new Date(payload.exp * 1000 + Math.floor(Math.random() * 500));
@@ -70,6 +76,7 @@ class Token extends kalmia_sql_lib_1.BaseModel {
             return this.token;
         }
         catch (e) {
+            kalmia_common_lib_1.AppLogger.error('Error generating token', e);
             if (singleTrans) {
                 await sql.rollback(conn);
             }
@@ -189,10 +196,15 @@ class Token extends kalmia_sql_lib_1.BaseModel {
         if (!this.token) {
             return null;
         }
+        const algorithms = env_1.env.RSA_JWT_PK ? ['RS256'] : null;
+        const options = {
+            subject: this.subject,
+        };
+        if (algorithms) {
+            options.algorithms = algorithms;
+        }
         try {
-            const payload = jwt.verify(this.token, env_1.env.APP_SECRET, {
-                subject: this.subject
-            });
+            const payload = jwt.verify(this.token, env_1.env.RSA_JWT_PK || env_1.env.APP_SECRET, options);
             if (payload) {
                 const query = `
           SELECT t.token, t.user_id, t.status, t.expiresAt

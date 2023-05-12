@@ -40,6 +40,18 @@
       },
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Test specific selected text",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": ["--runInBand", "--config=${workspaceFolder}/jest.config.ts", "--forceExit", "${fileBasename}", "-t", "${selectedText}"  ],
+      "env": {
+        "APP_ENV": "testing"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }
