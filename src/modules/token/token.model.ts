@@ -3,7 +3,8 @@ import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
 import { createHash } from 'crypto';
 import * as jwt from 'jsonwebtoken';
-import { BaseModel, DbModelStatus, MySqlConnManager, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
+import { AppLogger } from 'kalmia-common-lib';
+import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
 import { env } from '../../config/env';
@@ -94,6 +95,7 @@ export class Token extends BaseModel {
     })
   public payload: any;
 
+
   /**
    * Generates a new JWT and saves it to the database.
    * @param exp (optional) Time until expiration. Defaults to '1d'
@@ -101,6 +103,16 @@ export class Token extends BaseModel {
    */
   public async generate(exp: string | number = '1d', connection?: PoolConnection): Promise<string> {
     const { singleTrans, sql, conn } = await this.getDbConnection(connection);
+    const algorithm = env.RSA_JWT_PK ? 'RS256' : null;
+
+    const options: jwt.SignOptions = {
+      subject: this.subject,
+      expiresIn: exp,
+    };
+    if (algorithm) {
+      options.algorithm = algorithm;
+    }
+
 
     try {
       if (!exp) {
@@ -116,11 +128,8 @@ export class Token extends BaseModel {
           ...this.payload,
           tokenUuid: uuid_v1()
         },
-        env.APP_SECRET,
-        {
-          subject: this.subject,
-          expiresIn: exp
-        }
+        env.RSA_JWT_PK || env.APP_SECRET,
+        options
       );
 
       // Get expiration date.
@@ -151,6 +160,7 @@ export class Token extends BaseModel {
       }
       return this.token;
     } catch (e) {
+      AppLogger.error('Error generating token', e);
       if (singleTrans) {
         await sql.rollback(conn);
       }
@@ -294,11 +304,17 @@ export class Token extends BaseModel {
     if (!this.token) {
       return null;
     }
+    const algorithms = env.RSA_JWT_PK ? ['RS256' as any] : null;
+
+    const options: jwt.VerifyOptions = {
+      subject: this.subject,
+    };
+    if (algorithms) {
+      options.algorithms = algorithms;
+    }
 
     try {
-      const payload = jwt.verify(this.token, env.APP_SECRET, {
-        subject: this.subject
-      });
+      const payload = jwt.verify(this.token, env.RSA_JWT_PK || env.APP_SECRET, options);
 
       if (payload) {
         const query = `

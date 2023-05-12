@@ -5,6 +5,7 @@ import { env as dbEnv, IEnv as DbIEnv } from 'kalmia-sql-lib';
 
 export interface IAuthEnv {
   APP_SECRET: string;
+  RSA_JWT_PK: string;
 }
 
 /**
@@ -17,5 +18,6 @@ export const env: IAuthEnv & DbIEnv & ICommonEnv = {
   /*
    * App secret for JWT.
    */
-  APP_SECRET: process.env['APP_SECRET'] || 'notasecret'
+  APP_SECRET: process.env['APP_SECRET'] || 'notasecret',
+  RSA_JWT_PK: process.env['RSA_JWT_PK'].replace(/#/g, '\n') || undefined
 };

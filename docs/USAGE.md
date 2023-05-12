@@ -1,6 +1,9 @@
 ## Auth API
 To use the API, make an instance of the [auth.ts](src/modules/user/models/auth.ts) class. Interface methods are available in the class.
 
+## Token
+Lib also support private key RSA256 for JWT. It needs to be set in RSA_JWT_PK variable. The new lines must be replaced wiht #.
+
 ### Example of creating a role:
 ```typescript
 const auth = new Auth();
