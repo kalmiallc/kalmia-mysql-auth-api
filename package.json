@@ -68,7 +68,7 @@
     "@rawmodel/core": "^3.3.4",
     "@rawmodel/parsers": "^3.3.4",
     "@rawmodel/validators": "^3.3.4",
-    "dotenv": "^16.0.3",
+    "dotenv": "^10.0.0",
     "mysql2": "^2.2.5"
   }
 }
