@@ -3,6 +3,7 @@ import { prop } from '@rawmodel/core';
 import { dateParser, integerParser, stringParser } from '@rawmodel/parsers';
 import { createHash } from 'crypto';
 import * as jwt from 'jsonwebtoken';
+import { AppLogger } from 'kalmia-common-lib';
 import { BaseModel, DbModelStatus, MySqlUtil, PopulateFor, SerializeFor } from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
 import { v1 as uuid_v1 } from 'uuid'; // timestamp uuid
@@ -26,7 +27,7 @@ export class Token extends BaseModel {
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB],
     validators: []
-    })
+  })
   public user_id: number;
 
   /**
@@ -36,7 +37,7 @@ export class Token extends BaseModel {
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB]
-    })
+  })
   public subject: string;
 
   /**
@@ -46,7 +47,7 @@ export class Token extends BaseModel {
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.ALL],
     serializable: [SerializeFor.ADMIN]
-    })
+  })
   public exp: string | number;
 
   /**
@@ -58,7 +59,7 @@ export class Token extends BaseModel {
     parser: { resolver: dateParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL]
-    })
+  })
   public expiresAt: Date;
 
   /**
@@ -69,7 +70,7 @@ export class Token extends BaseModel {
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL]
-    })
+  })
   public token: string;
 
   /**
@@ -78,9 +79,9 @@ export class Token extends BaseModel {
    */
   @prop({
     getter() {
-    return this.token ? createHash('sha256').update(this.token).digest('hex') : null;
+      return this.token ? createHash('sha256').update(this.token).digest('hex') : null;
     }
-    })
+  })
   private _tokenHash: string;
 
   /**
@@ -91,7 +92,7 @@ export class Token extends BaseModel {
   @prop({
     populatable: [],
     serializable: []
-    })
+  })
   public payload: any;
 
 
@@ -102,6 +103,16 @@ export class Token extends BaseModel {
    */
   public async generate(exp: string | number = '1d', connection?: PoolConnection): Promise<string> {
     const { singleTrans, sql, conn } = await this.getDbConnection(connection);
+    const algorithm = env.RSA_JWT_PK ? 'RS256' : null;
+
+    const options: jwt.SignOptions = {
+      subject: this.subject,
+      expiresIn: exp,
+    };
+    if (algorithm) {
+      options.algorithm = algorithm;
+    }
+
 
     try {
       if (!exp) {
@@ -118,12 +129,7 @@ export class Token extends BaseModel {
           tokenUuid: uuid_v1()
         },
         env.RSA_JWT_PK || env.APP_SECRET,
-        {
-          subject: this.subject,
-          expiresIn: exp,
-          algorithm: env.RSA_JWT_PK ? 'RS256' : null
-        },
-      
+        options
       );
 
       // Get expiration date.
@@ -154,6 +160,7 @@ export class Token extends BaseModel {
       }
       return this.token;
     } catch (e) {
+      AppLogger.error('Error generating token', e);
       if (singleTrans) {
         await sql.rollback(conn);
       }
@@ -297,12 +304,17 @@ export class Token extends BaseModel {
     if (!this.token) {
       return null;
     }
+    const algorithms = env.RSA_JWT_PK ? ['RS256' as any] : null;
+
+    const options: jwt.VerifyOptions = {
+      subject: this.subject,
+    };
+    if (algorithms) {
+      options.algorithms = algorithms;
+    }
 
     try {
-      const payload = jwt.verify(this.token, env.RSA_JWT_PK || env.APP_SECRET, {
-        subject: this.subject,
-        algorithms: env.RSA_JWT_PK ? ['RS256'] : null
-      });
+      const payload = jwt.verify(this.token, env.RSA_JWT_PK || env.APP_SECRET, options);
 
       if (payload) {
         const query = `
