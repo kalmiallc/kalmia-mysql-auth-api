@@ -681,7 +681,7 @@ export class Auth {
    * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>> {
+  async loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByEmail(email);
     if (!user.exists()) {
       return {
