@@ -691,7 +691,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      const payload = { ...jwtPayload, user_id: user.id };
+      const payload = { ...jwtPayload, userId: user.id };
 
       return await this.generateToken(payload, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
     } else {
@@ -720,7 +720,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      const payload = { ...jwtPayload, user_id: user.id };
+      const payload = { ...jwtPayload, userId: user.id };
       return await this.generateToken(payload, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
     } else {
       return {
@@ -747,7 +747,7 @@ export class Auth {
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
-    const payload = { ...jwtPayload, user_id: user.id };
+    const payload = { ...jwtPayload, userId: user.id };
     return await this.generateToken(payload, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
   }
 
