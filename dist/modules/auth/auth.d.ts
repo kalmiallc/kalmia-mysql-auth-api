@@ -5,6 +5,7 @@ import { IAuthUser } from '../auth-user/interfaces/auth-user.interface';
 import { RolePermission } from '../auth-user/models/role-permission.model';
 import { Role } from '../auth-user/models/role.model';
 import { IAuthResponse, INewPermission, IUpdatePermission, PermissionPass } from './interfaces';
+import { SignOptions } from 'jsonwebtoken';
 /**
  * Authorization service.
  */
@@ -68,9 +69,11 @@ export declare class Auth {
      * @param subject JWT subject
      * @param userId (optional) id of the user token is connected to, if it is connected to a user.
      * @param exp (optional) how long until the newly generated token expires, defaults to '1d'
+     * @param conn (optional) connection to use for the operation, if not provided, a new connection will be created
+     * @param forceAppSecret (optional) whether to force the use of the app secret instead of the PK. Defaults to false.
      * @returns JWT
      */
-    generateToken(data: any, subject: string, userId?: number, exp?: any, conn?: PoolConnection): Promise<IAuthResponse<string>>;
+    generateToken(data: any, subject: string, userId?: number, exp?: any, conn?: PoolConnection, forceAppSecret?: boolean, addOptions?: SignOptions): Promise<IAuthResponse<string>>;
     /**
      * Invalidates the provided token in the database.
      * @param token Token to be invalidated
@@ -141,24 +144,30 @@ export declare class Auth {
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * @param email User's email
      * @param password User's password
+     * @param exp Expiration time of the JWT
+     * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    loginEmail(email: string, password: string, exp?: string | number): Promise<IAuthResponse<string>>;
+    loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>>;
     /**
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * @param username User's username
      * @param password User's password
+     * @param exp Expiration time of the JWT
+     * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    loginUsername(username: string, password: string, exp?: string | number): Promise<IAuthResponse<string>>;
+    loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>>;
     /**
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * This function should be limited by the origin calling function by user's permissions.
      *
      * @param pin User's PIN number.
+     * @param exp Expiration time of the JWT
+     * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    loginPin(pin: string, exp?: string | number): Promise<IAuthResponse<string>>;
+    loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>>;
     /**
      * Creates auth user with provided data.
      *
