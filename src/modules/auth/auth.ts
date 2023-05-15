@@ -710,7 +710,7 @@ export class Auth {
    * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>> {
+  async loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByUsername(username);
     if (!user.exists()) {
       return {
@@ -739,7 +739,7 @@ export class Auth {
    * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>> {
+  async loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByPin(pin);
     if (!user.exists()) {
       return {
