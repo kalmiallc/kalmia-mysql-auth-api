@@ -148,7 +148,7 @@ export declare class Auth {
      * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>>;
+    loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any): Promise<IAuthResponse<string>>;
     /**
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * @param username User's username
