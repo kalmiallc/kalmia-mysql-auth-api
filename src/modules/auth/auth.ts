@@ -681,7 +681,7 @@ export class Auth {
    * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>> {
+  async loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByEmail(email);
     if (!user.exists()) {
       return {
@@ -691,7 +691,9 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
+      const payload = { ...jwtPayload, user_id: user.id };
+
+      return await this.generateToken(payload, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
     } else {
       return {
         status: false,
@@ -708,7 +710,7 @@ export class Auth {
    * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>> {
+  async loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByUsername(username);
     if (!user.exists()) {
       return {
@@ -718,7 +720,8 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
+      const payload = { ...jwtPayload, user_id: user.id };
+      return await this.generateToken(payload, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
     } else {
       return {
         status: false,
@@ -736,7 +739,7 @@ export class Auth {
    * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>> {
+  async loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByPin(pin);
     if (!user.exists()) {
       return {
@@ -744,8 +747,8 @@ export class Auth {
         errors: [AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
       };
     }
-
-    return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
+    const payload = { ...jwtPayload, user_id: user.id };
+    return await this.generateToken(payload, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
   }
 
   /**
