@@ -96,16 +96,35 @@ export class Token extends BaseModel {
   public payload: any;
 
 
+  public forceAppSecret = false;
+
+
+  /**
+   * Checks if token is RSA based.
+   * 
+   * @param token jwt token
+   * @param algorithm which algorithm to use for verification - defaults to RS256
+   * @returns true if token is RSA based
+   */
+  public isJwtRsaBased(token: string, algorithm: string = 'RS256') {
+    const decoded = jwt.decode(token, { complete: true });
+    if (decoded.header.alg === algorithm) {
+      return true;
+    }
+  }
+
   /**
    * Generates a new JWT and saves it to the database.
    * @param exp (optional) Time until expiration. Defaults to '1d'
    * @returns JWT
    */
-  public async generate(exp: string | number = '1d', connection?: PoolConnection): Promise<string> {
+  public async generate(exp: string | number = '1d', connection?: PoolConnection, addOptions?: jwt.SignOptions): Promise<string> {
     const { singleTrans, sql, conn } = await this.getDbConnection(connection);
-    const algorithm = env.RSA_JWT_PK ? 'RS256' : null;
+    const algorithm = (!this.forceAppSecret && env.RSA_JWT_PK) ? 'RS256' : null;
 
-    const options: jwt.SignOptions = {
+    const secret = algorithm ? env.RSA_JWT_PK : env.APP_SECRET;
+
+    let options: jwt.SignOptions = {
       subject: this.subject,
       expiresIn: exp,
     };
@@ -113,6 +132,17 @@ export class Token extends BaseModel {
       options.algorithm = algorithm;
     }
 
+    if (env.JWT_AUDIENCE) {
+      options.audience = env.JWT_AUDIENCE;
+    }
+
+    if (addOptions) {
+      options = { ...options, ...addOptions };
+    }
+
+    if (this.payload?.aud) {
+      delete options['audience'];
+    }
 
     try {
       if (!exp) {
@@ -128,7 +158,7 @@ export class Token extends BaseModel {
           ...this.payload,
           tokenUuid: uuid_v1()
         },
-        env.RSA_JWT_PK || env.APP_SECRET,
+        secret,
         options
       );
 
@@ -304,17 +334,20 @@ export class Token extends BaseModel {
     if (!this.token) {
       return null;
     }
-    const algorithms = env.RSA_JWT_PK ? ['RS256' as any] : null;
-
-    const options: jwt.VerifyOptions = {
-      subject: this.subject,
-    };
-    if (algorithms) {
-      options.algorithms = algorithms;
-    }
 
     try {
-      const payload = jwt.verify(this.token, env.RSA_JWT_PK || env.APP_SECRET, options);
+
+      const isRsa = this.isJwtRsaBased(this.token);
+
+      const algorithms = isRsa ? ['RS256' as any] : null;
+      const options: jwt.VerifyOptions = {
+        subject: this.subject,
+      };
+      if (algorithms) {
+        options.algorithms = algorithms;
+      }
+
+      const payload = jwt.verify(this.token, isRsa ? env.RSA_JWT_PK : env.APP_SECRET, options);
 
       if (payload) {
         const query = `
