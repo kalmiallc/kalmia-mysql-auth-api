@@ -13,6 +13,8 @@ import { RolePermission } from '../auth-user/models/role-permission.model';
 import { Role } from '../auth-user/models/role.model';
 import { Token } from '../token/token.model';
 import { IAuthResponse, INewPermission, IUpdatePermission, PermissionPass } from './interfaces';
+import { SignOptions } from 'jsonwebtoken';
+import { env } from 'process';
 
 /**
  * Authorization service.
@@ -266,16 +268,21 @@ export class Auth {
    * @param subject JWT subject
    * @param userId (optional) id of the user token is connected to, if it is connected to a user.
    * @param exp (optional) how long until the newly generated token expires, defaults to '1d'
+   * @param conn (optional) connection to use for the operation, if not provided, a new connection will be created
+   * @param forceAppSecret (optional) whether to force the use of the app secret instead of the PK. Defaults to false.
    * @returns JWT
    */
-  async generateToken(data: any, subject: string, userId?: number, exp?: any, conn?: PoolConnection): Promise<IAuthResponse<string>> {
+  async generateToken(data: any, subject: string, userId?: number, exp?: any, conn?: PoolConnection, forceAppSecret?: boolean, addOptions?: SignOptions): Promise<IAuthResponse<string>> {
     const token = new Token({
       payload: data,
       subject,
       user_id: userId
     });
+    if (forceAppSecret) {
+      token.forceAppSecret = true;
+    }
 
-    const tokenString = await token.generate(exp, conn);
+    const tokenString = await token.generate(exp, conn, addOptions);
     if (tokenString) {
       return {
         status: true,
@@ -670,9 +677,11 @@ export class Auth {
    * Validates user's login credentials. If accepted, returns authentication JWT.
    * @param email User's email
    * @param password User's password
+   * @param exp Expiration time of the JWT
+   * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginEmail(email: string, password: string): Promise<IAuthResponse<string>> {
+  async loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByEmail(email);
     if (!user.exists()) {
       return {
@@ -682,7 +691,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
     } else {
       return {
         status: false,
@@ -695,9 +704,11 @@ export class Auth {
    * Validates user's login credentials. If accepted, returns authentication JWT.
    * @param username User's username
    * @param password User's password
+   * @param exp Expiration time of the JWT
+   * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginUsername(username: string, password: string): Promise<IAuthResponse<string>> {
+  async loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByUsername(username);
     if (!user.exists()) {
       return {
@@ -707,7 +718,7 @@ export class Auth {
     }
 
     if (await user.comparePassword(password)) {
-      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id);
+      return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
     } else {
       return {
         status: false,
@@ -721,9 +732,11 @@ export class Auth {
    * This function should be limited by the origin calling function by user's permissions.
    *
    * @param pin User's PIN number.
+   * @param exp Expiration time of the JWT
+   * @param forceAppSecret Force to use app secret instead of RSA pk
    * @returns Authentication JWT
    */
-  async loginPin(pin: string): Promise<IAuthResponse<string>> {
+  async loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>> {
     const user = await new AuthUser({}).populateByPin(pin);
     if (!user.exists()) {
       return {
@@ -732,7 +745,7 @@ export class Auth {
       };
     }
 
-    return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id);
+    return await this.generateToken({ userId: user.id }, AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
   }
 
   /**
