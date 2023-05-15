@@ -148,7 +148,7 @@ export declare class Auth {
      * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>>;
+    loginEmail(email: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>>;
     /**
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * @param username User's username
@@ -157,7 +157,7 @@ export declare class Auth {
      * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>>;
+    loginUsername(username: string, password: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>>;
     /**
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * This function should be limited by the origin calling function by user's permissions.
@@ -167,7 +167,7 @@ export declare class Auth {
      * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean): Promise<IAuthResponse<string>>;
+    loginPin(pin: string, exp?: string | number, forceAppSecret?: boolean, jwtPayload?: any[]): Promise<IAuthResponse<string>>;
     /**
      * Creates auth user with provided data.
      *
