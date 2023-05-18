@@ -30,21 +30,46 @@ class Token extends kalmia_sql_lib_1.BaseModel {
          * Tokens database table.
          */
         this.tableName = types_1.AuthDbTables.TOKENS;
+        this.forceAppSecret = false;
+    }
+    /**
+     * Checks if token is RSA based.
+     *
+     * @param token jwt token
+     * @param algorithm which algorithm to use for verification - defaults to RS256
+     * @returns true if token is RSA based
+     */
+    isJwtRsaBased(token, algorithm = 'RS256') {
+        const decoded = jwt.decode(token, { complete: true });
+        if (decoded.header.alg === algorithm) {
+            return true;
+        }
     }
     /**
      * Generates a new JWT and saves it to the database.
      * @param exp (optional) Time until expiration. Defaults to '1d'
      * @returns JWT
      */
-    async generate(exp = '1d', connection) {
+    async generate(exp = '1d', connection, addOptions) {
+        var _a;
         const { singleTrans, sql, conn } = await this.getDbConnection(connection);
-        const algorithm = env_1.env.RSA_JWT_PK ? 'RS256' : null;
-        const options = {
+        const algorithm = (!this.forceAppSecret && env_1.env.RSA_JWT_PK) ? 'RS256' : null;
+        const secret = algorithm ? env_1.env.RSA_JWT_PK : env_1.env.APP_SECRET;
+        let options = {
             subject: this.subject,
             expiresIn: exp,
         };
         if (algorithm) {
             options.algorithm = algorithm;
+        }
+        if (env_1.env.JWT_AUDIENCE) {
+            options.audience = env_1.env.JWT_AUDIENCE;
+        }
+        if (addOptions) {
+            options = Object.assign(Object.assign({}, options), addOptions);
+        }
+        if ((_a = this.payload) === null || _a === void 0 ? void 0 : _a.aud) {
+            delete options['audience'];
         }
         try {
             if (!exp) {
@@ -53,7 +78,7 @@ class Token extends kalmia_sql_lib_1.BaseModel {
             if (!this.user_id) {
                 this.user_id = null;
             }
-            this.token = jwt.sign(Object.assign(Object.assign({}, this.payload), { tokenUuid: (0, uuid_1.v1)() }), env_1.env.RSA_JWT_PK || env_1.env.APP_SECRET, options);
+            this.token = jwt.sign(Object.assign(Object.assign({}, this.payload), { tokenUuid: (0, uuid_1.v1)() }), secret, options);
             // Get expiration date.
             const payload = jwt.decode(this.token);
             this.expiresAt = new Date(payload.exp * 1000 + Math.floor(Math.random() * 500));
@@ -196,15 +221,16 @@ class Token extends kalmia_sql_lib_1.BaseModel {
         if (!this.token) {
             return null;
         }
-        const algorithms = env_1.env.RSA_JWT_PK ? ['RS256'] : null;
-        const options = {
-            subject: this.subject,
-        };
-        if (algorithms) {
-            options.algorithms = algorithms;
-        }
         try {
-            const payload = jwt.verify(this.token, env_1.env.RSA_JWT_PK || env_1.env.APP_SECRET, options);
+            const isRsa = this.isJwtRsaBased(this.token);
+            const algorithms = isRsa ? ['RS256'] : null;
+            const options = {
+                subject: this.subject,
+            };
+            if (algorithms) {
+                options.algorithms = algorithms;
+            }
+            const payload = jwt.verify(this.token, isRsa ? env_1.env.RSA_JWT_PK : env_1.env.APP_SECRET, options);
             if (payload) {
                 const query = `
           SELECT t.token, t.user_id, t.status, t.expiresAt

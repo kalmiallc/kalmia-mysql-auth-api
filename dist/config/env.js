@@ -13,5 +13,5 @@ exports.env = Object.assign(Object.assign({}, kalmia_sql_lib_1.env), {
     /*
      * App secret for JWT.
      */
-    APP_SECRET: process.env['APP_SECRET'] || 'notasecret', RSA_JWT_PK: ((_a = process.env['RSA_JWT_PK']) === null || _a === void 0 ? void 0 : _a.replace(/#/g, '\n')) || undefined });
+    APP_SECRET: process.env['APP_SECRET'] || 'notasecret', RSA_JWT_PK: ((_a = process.env['RSA_JWT_PK']) === null || _a === void 0 ? void 0 : _a.replace(/#/g, '\n')) || undefined, JWT_AUDIENCE: process.env['JWT_AUDIENCE'] || 'kalmia' });
 //# sourceMappingURL=env.js.map
