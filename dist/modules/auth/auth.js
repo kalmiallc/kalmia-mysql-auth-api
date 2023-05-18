@@ -227,15 +227,20 @@ class Auth {
      * @param subject JWT subject
      * @param userId (optional) id of the user token is connected to, if it is connected to a user.
      * @param exp (optional) how long until the newly generated token expires, defaults to '1d'
+     * @param conn (optional) connection to use for the operation, if not provided, a new connection will be created
+     * @param forceAppSecret (optional) whether to force the use of the app secret instead of the PK. Defaults to false.
      * @returns JWT
      */
-    async generateToken(data, subject, userId, exp, conn) {
+    async generateToken(data, subject, userId, exp, conn, forceAppSecret, addOptions) {
         const token = new token_model_1.Token({
             payload: data,
             subject,
             user_id: userId
         });
-        const tokenString = await token.generate(exp, conn);
+        if (forceAppSecret) {
+            token.forceAppSecret = true;
+        }
+        const tokenString = await token.generate(exp, conn, addOptions);
         if (tokenString) {
             return {
                 status: true,
@@ -595,9 +600,11 @@ class Auth {
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * @param email User's email
      * @param password User's password
+     * @param exp Expiration time of the JWT
+     * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    async loginEmail(email, password, exp) {
+    async loginEmail(email, password, exp, forceAppSecret, jwtPayload) {
         const user = await new __1.AuthUser({}).populateByEmail(email);
         if (!user.exists()) {
             return {
@@ -606,7 +613,8 @@ class Auth {
             };
         }
         if (await user.comparePassword(password)) {
-            return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp);
+            const payload = Object.assign(Object.assign({}, jwtPayload), { userId: user.id });
+            return await this.generateToken(payload, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
         }
         else {
             return {
@@ -619,9 +627,11 @@ class Auth {
      * Validates user's login credentials. If accepted, returns authentication JWT.
      * @param username User's username
      * @param password User's password
+     * @param exp Expiration time of the JWT
+     * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    async loginUsername(username, password, exp) {
+    async loginUsername(username, password, exp, forceAppSecret, jwtPayload) {
         const user = await new __1.AuthUser({}).populateByUsername(username);
         if (!user.exists()) {
             return {
@@ -630,7 +640,8 @@ class Auth {
             };
         }
         if (await user.comparePassword(password)) {
-            return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp);
+            const payload = Object.assign(Object.assign({}, jwtPayload), { userId: user.id });
+            return await this.generateToken(payload, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
         }
         else {
             return {
@@ -644,9 +655,11 @@ class Auth {
      * This function should be limited by the origin calling function by user's permissions.
      *
      * @param pin User's PIN number.
+     * @param exp Expiration time of the JWT
+     * @param forceAppSecret Force to use app secret instead of RSA pk
      * @returns Authentication JWT
      */
-    async loginPin(pin, exp) {
+    async loginPin(pin, exp, forceAppSecret, jwtPayload) {
         const user = await new __1.AuthUser({}).populateByPin(pin);
         if (!user.exists()) {
             return {
@@ -654,7 +667,8 @@ class Auth {
                 errors: [types_1.AuthAuthenticationErrorCode.USER_NOT_AUTHENTICATED]
             };
         }
-        return await this.generateToken({ userId: user.id }, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp);
+        const payload = Object.assign(Object.assign({}, jwtPayload), { userId: user.id });
+        return await this.generateToken(payload, types_1.AuthJwtTokenType.USER_AUTHENTICATION, user.id, exp, null, forceAppSecret);
     }
     /**
      * Creates auth user with provided data.

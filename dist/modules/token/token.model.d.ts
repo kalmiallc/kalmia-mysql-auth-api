@@ -1,3 +1,4 @@
+import * as jwt from 'jsonwebtoken';
 import { BaseModel } from 'kalmia-sql-lib';
 import { PoolConnection } from 'mysql2/promise';
 import { AuthDbTables, AuthJwtTokenType } from '../../config/types';
@@ -43,12 +44,21 @@ export declare class Token extends BaseModel {
      * Populate this if you wish to generate a token.
      */
     payload: any;
+    forceAppSecret: boolean;
+    /**
+     * Checks if token is RSA based.
+     *
+     * @param token jwt token
+     * @param algorithm which algorithm to use for verification - defaults to RS256
+     * @returns true if token is RSA based
+     */
+    isJwtRsaBased(token: string, algorithm?: string): boolean;
     /**
      * Generates a new JWT and saves it to the database.
      * @param exp (optional) Time until expiration. Defaults to '1d'
      * @returns JWT
      */
-    generate(exp?: string | number, connection?: PoolConnection): Promise<string>;
+    generate(exp?: string | number, connection?: PoolConnection, addOptions?: jwt.SignOptions): Promise<string>;
     /**
      * If token in this.token exists in the database and is valid, returns a token with the same payload and refreshed expiration.
      * Expiration duration is the same as that of the original token.
