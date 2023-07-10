@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
-import * as faker from 'faker';
 import * as jwt from 'jsonwebtoken';
+import { faker } from '@faker-js/faker';
 import { DbModelStatus, MySqlConnManager, MySqlUtil } from 'kalmia-sql-lib';
 import { Pool } from 'mysql2/promise';
 import { AuthUser } from '../../..';
