@@ -282,12 +282,12 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
       WHERE id = @id
       `, Object.assign(Object.assign({}, updatable), { id: this.id }), conn);
             if (singleTrans) {
-                await sql.commit(conn);
+                await sql.commitAndRelease(conn);
             }
         }
         catch (error) {
             if (singleTrans) {
-                await sql.rollback(conn);
+                await sql.rollbackAndRelease(conn);
             }
             throw new Error(error);
         }
@@ -331,12 +331,12 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
             if (isSingleTrans) {
                 this._createTime = new Date();
                 this._updateTime = this._createTime;
-                await mySqlHelper.commit(options.conn);
+                await mySqlHelper.commitAndRelease(options.conn);
             }
         }
         catch (error) {
             if (isSingleTrans) {
-                await mySqlHelper.rollback(options.conn);
+                await mySqlHelper.rollbackAndRelease(options.conn);
             }
             throw new Error(error);
         }
@@ -363,18 +363,19 @@ class AuthUser extends kalmia_sql_lib_1.BaseModel {
                 userId: this.id
             }, conn);
             if (singleTrans) {
-                await sql.commit(conn);
+                await sql.commitAndRelease(conn);
             }
         }
         catch (error) {
             if (singleTrans) {
-                await sql.rollback(conn);
+                await sql.rollbackAndRelease(conn);
             }
             throw new Error(error);
         }
         return this;
     }
 }
+exports.AuthUser = AuthUser;
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
@@ -478,5 +479,4 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], AuthUser.prototype, "permissions", void 0);
-exports.AuthUser = AuthUser;
 //# sourceMappingURL=auth-user.model.js.map

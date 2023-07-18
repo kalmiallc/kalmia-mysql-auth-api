@@ -111,18 +111,19 @@ class RolePermission extends kalmia_sql_lib_1.BaseModel {
             await sql.paramExecute(updateQuery, Object.assign(Object.assign({}, serializedModel), { roleId: this.role_id, permissionId: this.permission_id }), conn);
             this._updateTime = new Date();
             if (singleTrans) {
-                await sql.commit(conn);
+                await sql.commitAndRelease(conn);
             }
         }
         catch (error) {
             if (singleTrans) {
-                await sql.rollback(conn);
+                await sql.rollbackAndRelease(conn);
             }
             throw new Error(error);
         }
         return this;
     }
 }
+exports.RolePermission = RolePermission;
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
@@ -225,5 +226,4 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], RolePermission.prototype, "execute", void 0);
-exports.RolePermission = RolePermission;
 //# sourceMappingURL=role-permission.model.js.map

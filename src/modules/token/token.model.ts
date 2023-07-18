@@ -186,13 +186,13 @@ export class Token extends BaseModel {
       this.id = req[0].id;
 
       if (singleTrans) {
-        await sql.commit(conn);
+        await sql.commitAndRelease(conn);
       }
       return this.token;
     } catch (e) {
       AppLogger.error('Error generating token', e);
       if (singleTrans) {
-        await sql.rollback(conn);
+        await sql.rollbackAndRelease(conn);
       }
       return null;
     }
@@ -276,12 +276,12 @@ export class Token extends BaseModel {
 
       this.status = DbModelStatus.DELETED;
       if (singleTrans) {
-        await sql.commit(conn);
+        await sql.commitAndRelease(conn);
       }
       return true;
     } catch (error) {
       if (singleTrans) {
-        await sql.rollback(conn);
+        await sql.rollbackAndRelease(conn);
       }
     }
     return false;
@@ -314,12 +314,12 @@ export class Token extends BaseModel {
       );
 
       if (singleTrans) {
-        await sql.commit(conn);
+        await sql.commitAndRelease(conn);
       }
       return true;
     } catch (error) {
       if (singleTrans) {
-        await sql.rollback(conn);
+        await sql.rollbackAndRelease(conn);
       }
       throw new Error(error);
     }

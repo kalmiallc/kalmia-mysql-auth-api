@@ -95,14 +95,14 @@ class Auth {
             for (const roleId of roleIds) {
                 const role = await new role_model_1.Role().populateById(roleId, conn);
                 if (!role.exists()) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: [types_1.AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
                     };
                 }
                 if (await user.hasRole(role.id, conn)) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: [types_1.AuthBadRequestErrorCode.AUTH_USER_ROLE_ALREADY_EXISTS]
@@ -111,10 +111,10 @@ class Auth {
                 await user.addRole(role.id, conn, false);
             }
             await user.populateRoles(conn);
-            await sql.commit(conn);
+            await sql.commitAndRelease(conn);
         }
         catch (error) {
-            await sql.rollback(conn);
+            await sql.rollbackAndRelease(conn);
             return {
                 status: false,
                 errors: [types_1.AuthSystemErrorCode.SQL_SYSTEM_ERROR],
@@ -146,14 +146,14 @@ class Auth {
             for (const roleId of roleIds) {
                 const role = await new role_model_1.Role().populateById(roleId, conn);
                 if (!role.exists()) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: [types_1.AuthResourceNotFoundErrorCode.ROLE_DOES_NOT_EXISTS]
                     };
                 }
                 if (!(await user.hasRole(role.id, conn))) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: [types_1.AuthBadRequestErrorCode.AUTH_USER_ROLE_DOES_NOT_EXISTS]
@@ -162,10 +162,10 @@ class Auth {
             }
             await user.revokeRoles(roleIds, conn);
             await user.populateRoles(conn);
-            await sql.commit(conn);
+            await sql.commitAndRelease(conn);
         }
         catch (error) {
-            await sql.rollback(conn);
+            await sql.rollbackAndRelease(conn);
             return {
                 status: false,
                 errors: [types_1.AuthSystemErrorCode.SQL_SYSTEM_ERROR],
@@ -445,7 +445,7 @@ class Auth {
                     await rolePermission.handle(error);
                 }
                 if (!rolePermission.isValid()) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: rolePermission.collectErrors().map((x) => x.code)
@@ -456,18 +456,18 @@ class Auth {
                     rolePermissions.push(rolePermission);
                 }
                 else {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: [types_1.AuthBadRequestErrorCode.ROLE_PERMISSION_ALREADY_EXISTS]
                     };
                 }
             }
-            await sql.commit(conn);
+            await sql.commitAndRelease(conn);
             role.rolePermissions = [...role.rolePermissions, ...rolePermissions];
         }
         catch (error) {
-            await sql.rollback(conn);
+            await sql.rollbackAndRelease(conn);
             return {
                 status: false,
                 errors: [types_1.AuthSystemErrorCode.SQL_SYSTEM_ERROR],
@@ -499,7 +499,7 @@ class Auth {
             for (const permission of permissions) {
                 const rolePermission = await new role_permission_model_1.RolePermission({}).populateByIds(role.id, permission.permission_id, conn);
                 if (!rolePermission.exists()) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: [types_1.AuthResourceNotFoundErrorCode.ROLE_PERMISSION_DOES_NOT_EXISTS]
@@ -513,7 +513,7 @@ class Auth {
                     await rolePermission.handle(error);
                 }
                 if (!rolePermission.isValid()) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: rolePermission.collectErrors().map((x) => x.code)
@@ -522,10 +522,10 @@ class Auth {
                 await rolePermission.update({ conn });
             }
             await role.populatePermissions(conn);
-            await sql.commit(conn);
+            await sql.commitAndRelease(conn);
         }
         catch (error) {
-            await sql.rollback(conn);
+            await sql.rollbackAndRelease(conn);
             return {
                 status: false,
                 errors: [types_1.AuthSystemErrorCode.SQL_SYSTEM_ERROR],
@@ -794,10 +794,10 @@ class Auth {
                 try {
                     await authUser.updateNonUpdatableFields(['passwordHash'], conn);
                     await new token_model_1.Token().invalidateUserTokens(authUser.id, types_1.AuthJwtTokenType.USER_AUTHENTICATION, conn);
-                    await sql.commit(conn);
+                    await sql.commitAndRelease(conn);
                 }
                 catch (error) {
-                    await sql.rollback(conn);
+                    await sql.rollbackAndRelease(conn);
                     return {
                         status: false,
                         errors: [types_1.AuthSystemErrorCode.SQL_SYSTEM_ERROR],

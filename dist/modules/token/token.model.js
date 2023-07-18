@@ -96,14 +96,14 @@ class Token extends kalmia_sql_lib_1.BaseModel {
             const req = await sql.paramExecute('SELECT last_insert_id() AS id;', null, conn);
             this.id = req[0].id;
             if (singleTrans) {
-                await sql.commit(conn);
+                await sql.commitAndRelease(conn);
             }
             return this.token;
         }
         catch (e) {
             kalmia_common_lib_1.AppLogger.error('Error generating token', e);
             if (singleTrans) {
-                await sql.rollback(conn);
+                await sql.rollbackAndRelease(conn);
             }
             return null;
         }
@@ -169,13 +169,13 @@ class Token extends kalmia_sql_lib_1.BaseModel {
             }, conn);
             this.status = kalmia_sql_lib_1.DbModelStatus.DELETED;
             if (singleTrans) {
-                await sql.commit(conn);
+                await sql.commitAndRelease(conn);
             }
             return true;
         }
         catch (error) {
             if (singleTrans) {
-                await sql.rollback(conn);
+                await sql.rollbackAndRelease(conn);
             }
         }
         return false;
@@ -201,13 +201,13 @@ class Token extends kalmia_sql_lib_1.BaseModel {
                 type
             }, conn);
             if (singleTrans) {
-                await sql.commit(conn);
+                await sql.commitAndRelease(conn);
             }
             return true;
         }
         catch (error) {
             if (singleTrans) {
-                await sql.rollback(conn);
+                await sql.rollbackAndRelease(conn);
             }
             throw new Error(error);
         }
@@ -255,6 +255,7 @@ class Token extends kalmia_sql_lib_1.BaseModel {
         return null;
     }
 }
+exports.Token = Token;
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
@@ -311,5 +312,4 @@ __decorate([
     }),
     __metadata("design:type", Object)
 ], Token.prototype, "payload", void 0);
-exports.Token = Token;
 //# sourceMappingURL=token.model.js.map

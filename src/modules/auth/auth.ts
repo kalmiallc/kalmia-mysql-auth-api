@@ -117,7 +117,7 @@ export class Auth {
       for (const roleId of roleIds) {
         const role = await new Role().populateById(roleId, conn);
         if (!role.exists()) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -126,7 +126,7 @@ export class Auth {
         }
 
         if (await user.hasRole(role.id, conn)) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -138,9 +138,9 @@ export class Auth {
       }
 
       await user.populateRoles(conn);
-      await sql.commit(conn);
+      await sql.commitAndRelease(conn);
     } catch (error) {
-      await sql.rollback(conn);
+      await sql.rollbackAndRelease(conn);
 
       return {
         status: false,
@@ -176,7 +176,7 @@ export class Auth {
       for (const roleId of roleIds) {
         const role = await new Role().populateById(roleId, conn);
         if (!role.exists()) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -185,7 +185,7 @@ export class Auth {
         }
 
         if (!(await user.hasRole(role.id, conn))) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -196,9 +196,9 @@ export class Auth {
 
       await user.revokeRoles(roleIds, conn);
       await user.populateRoles(conn);
-      await sql.commit(conn);
+      await sql.commitAndRelease(conn);
     } catch (error) {
-      await sql.rollback(conn);
+      await sql.rollbackAndRelease(conn);
 
       return {
         status: false,
@@ -504,7 +504,7 @@ export class Auth {
         }
 
         if (!rolePermission.isValid()) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -516,7 +516,7 @@ export class Auth {
           await rolePermission.create({ conn });
           rolePermissions.push(rolePermission);
         } else {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -525,10 +525,10 @@ export class Auth {
         }
       }
 
-      await sql.commit(conn);
+      await sql.commitAndRelease(conn);
       role.rolePermissions = [...role.rolePermissions, ...rolePermissions];
     } catch (error) {
-      await sql.rollback(conn);
+      await sql.rollbackAndRelease(conn);
 
       return {
         status: false,
@@ -564,7 +564,7 @@ export class Auth {
       for (const permission of permissions) {
         const rolePermission = await new RolePermission({}).populateByIds(role.id, permission.permission_id, conn);
         if (!rolePermission.exists()) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -580,7 +580,7 @@ export class Auth {
         }
 
         if (!rolePermission.isValid()) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,
@@ -591,9 +591,9 @@ export class Auth {
       }
 
       await role.populatePermissions(conn);
-      await sql.commit(conn);
+      await sql.commitAndRelease(conn);
     } catch (error) {
-      await sql.rollback(conn);
+      await sql.rollbackAndRelease(conn);
 
       return {
         status: false,
@@ -880,9 +880,9 @@ export class Auth {
         try {
           await authUser.updateNonUpdatableFields(['passwordHash'], conn);
           await new Token().invalidateUserTokens(authUser.id, AuthJwtTokenType.USER_AUTHENTICATION, conn);
-          await sql.commit(conn);
+          await sql.commitAndRelease(conn);
         } catch (error) {
-          await sql.rollback(conn);
+          await sql.rollbackAndRelease(conn);
 
           return {
             status: false,

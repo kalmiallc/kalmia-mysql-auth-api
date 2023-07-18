@@ -245,11 +245,11 @@ export class RolePermission extends BaseModel {
 
       this._updateTime = new Date();
       if (singleTrans) {
-        await sql.commit(conn);
+        await sql.commitAndRelease(conn);
       }
     } catch (error) {
       if (singleTrans) {
-        await sql.rollback(conn);
+        await sql.rollbackAndRelease(conn);
       }
       throw new Error(error);
     }

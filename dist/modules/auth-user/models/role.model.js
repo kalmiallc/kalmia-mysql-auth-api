@@ -243,18 +243,19 @@ class Role extends kalmia_sql_lib_1.BaseModel {
       `;
             await sql.paramExecute(deleteRoleQuery, { roleId: this.id }, conn);
             if (singleTrans) {
-                await sql.commit(conn);
+                await sql.commitAndRelease(conn);
             }
         }
         catch (error) {
             if (singleTrans) {
-                await sql.rollback(conn);
+                await sql.rollbackAndRelease(conn);
             }
             throw new Error(error);
         }
         return this;
     }
 }
+exports.Role = Role;
 __decorate([
     (0, core_1.prop)({
         parser: { resolver: (0, parsers_1.integerParser)() },
@@ -291,5 +292,4 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], Role.prototype, "rolePermissions", void 0);
-exports.Role = Role;
 //# sourceMappingURL=role.model.js.map

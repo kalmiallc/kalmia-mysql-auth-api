@@ -466,11 +466,11 @@ export class AuthUser extends BaseModel {
       );
 
       if (singleTrans) {
-        await sql.commit(conn);
+        await sql.commitAndRelease(conn);
       }
     } catch (error) {
       if (singleTrans) {
-        await sql.rollback(conn);
+        await sql.rollbackAndRelease(conn);
       }
       throw new Error(error);
     }
@@ -522,11 +522,11 @@ export class AuthUser extends BaseModel {
       if (isSingleTrans) {
         this._createTime = new Date();
         this._updateTime = this._createTime;
-        await mySqlHelper.commit(options.conn);
+        await mySqlHelper.commitAndRelease(options.conn);
       }
     } catch (error) {
       if (isSingleTrans) {
-        await mySqlHelper.rollback(options.conn);
+        await mySqlHelper.rollbackAndRelease(options.conn);
       }
       throw new Error(error);
     }
@@ -562,11 +562,11 @@ export class AuthUser extends BaseModel {
       );
 
       if (singleTrans) {
-        await sql.commit(conn);
+        await sql.commitAndRelease(conn);
       }
     } catch (error) {
       if (singleTrans) {
-        await sql.rollback(conn);
+        await sql.rollbackAndRelease(conn);
       }
       throw new Error(error);
     }

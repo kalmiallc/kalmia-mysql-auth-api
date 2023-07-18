@@ -330,11 +330,11 @@ export class Role extends BaseModel {
       await sql.paramExecute(deleteRoleQuery, { roleId: this.id }, conn);
 
       if (singleTrans) {
-        await sql.commit(conn);
+        await sql.commitAndRelease(conn);
       }
     } catch (error) {
       if (singleTrans) {
-        await sql.rollback(conn);
+        await sql.rollbackAndRelease(conn);
       }
       throw new Error(error);
     }

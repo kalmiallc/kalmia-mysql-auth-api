@@ -12,7 +12,7 @@ var AuthDbTables;
     AuthDbTables["ROLES"] = "authRole";
     AuthDbTables["USER_ROLES"] = "authUserRole";
     AuthDbTables["ROLE_PERMISSIONS"] = "authRolePermission";
-})(AuthDbTables = exports.AuthDbTables || (exports.AuthDbTables = {}));
+})(AuthDbTables || (exports.AuthDbTables = AuthDbTables = {}));
 /**
  * Permission types definitions.
  */
@@ -21,7 +21,7 @@ var PermissionType;
     PermissionType["READ"] = "read";
     PermissionType["WRITE"] = "write";
     PermissionType["EXECUTE"] = "execute";
-})(PermissionType = exports.PermissionType || (exports.PermissionType = {}));
+})(PermissionType || (exports.PermissionType = PermissionType = {}));
 /**
  * Permissions levels definitions.
  */
@@ -30,7 +30,7 @@ var PermissionLevel;
     PermissionLevel[PermissionLevel["NONE"] = 0] = "NONE";
     PermissionLevel[PermissionLevel["OWN"] = 1] = "OWN";
     PermissionLevel[PermissionLevel["ALL"] = 2] = "ALL";
-})(PermissionLevel = exports.PermissionLevel || (exports.PermissionLevel = {}));
+})(PermissionLevel || (exports.PermissionLevel = PermissionLevel = {}));
 /**
  * Auth validator Error codes - 100_422000.
  */
@@ -60,7 +60,7 @@ var AuthValidatorErrorCode;
     AuthValidatorErrorCode[AuthValidatorErrorCode["ROLE_PERMISSION_READ_LEVEL_NOT_VALID"] = 100422021] = "ROLE_PERMISSION_READ_LEVEL_NOT_VALID";
     AuthValidatorErrorCode[AuthValidatorErrorCode["ROLE_PERMISSION_WRITE_LEVEL_NOT_VALID"] = 100422022] = "ROLE_PERMISSION_WRITE_LEVEL_NOT_VALID";
     AuthValidatorErrorCode[AuthValidatorErrorCode["ROLE_PERMISSION_EXECUTE_LEVEL_NOT_VALID"] = 100422023] = "ROLE_PERMISSION_EXECUTE_LEVEL_NOT_VALID";
-})(AuthValidatorErrorCode = exports.AuthValidatorErrorCode || (exports.AuthValidatorErrorCode = {}));
+})(AuthValidatorErrorCode || (exports.AuthValidatorErrorCode = AuthValidatorErrorCode = {}));
 /**
  * Bad request error codes - 100_400000.
  */
@@ -71,7 +71,7 @@ var AuthBadRequestErrorCode;
     AuthBadRequestErrorCode[AuthBadRequestErrorCode["ROLE_PERMISSION_ALREADY_EXISTS"] = 100400002] = "ROLE_PERMISSION_ALREADY_EXISTS";
     AuthBadRequestErrorCode[AuthBadRequestErrorCode["AUTH_USER_ROLE_ALREADY_EXISTS"] = 100400003] = "AUTH_USER_ROLE_ALREADY_EXISTS";
     AuthBadRequestErrorCode[AuthBadRequestErrorCode["AUTH_USER_ROLE_DOES_NOT_EXISTS"] = 100400004] = "AUTH_USER_ROLE_DOES_NOT_EXISTS";
-})(AuthBadRequestErrorCode = exports.AuthBadRequestErrorCode || (exports.AuthBadRequestErrorCode = {}));
+})(AuthBadRequestErrorCode || (exports.AuthBadRequestErrorCode = AuthBadRequestErrorCode = {}));
 /**
  * System error codes - 500000.
  */
@@ -80,7 +80,7 @@ var AuthSystemErrorCode;
     AuthSystemErrorCode[AuthSystemErrorCode["DEFAULT_SYSTEM_ERROR"] = 100500000] = "DEFAULT_SYSTEM_ERROR";
     AuthSystemErrorCode[AuthSystemErrorCode["UNHANDLED_SYSTEM_ERROR"] = 100500001] = "UNHANDLED_SYSTEM_ERROR";
     AuthSystemErrorCode[AuthSystemErrorCode["SQL_SYSTEM_ERROR"] = 100500002] = "SQL_SYSTEM_ERROR";
-})(AuthSystemErrorCode = exports.AuthSystemErrorCode || (exports.AuthSystemErrorCode = {}));
+})(AuthSystemErrorCode || (exports.AuthSystemErrorCode = AuthSystemErrorCode = {}));
 /**
  * Resource not found error codes - 404000.
  */
@@ -90,7 +90,7 @@ var AuthResourceNotFoundErrorCode;
     AuthResourceNotFoundErrorCode[AuthResourceNotFoundErrorCode["AUTH_USER_DOES_NOT_EXISTS"] = 100404001] = "AUTH_USER_DOES_NOT_EXISTS";
     AuthResourceNotFoundErrorCode[AuthResourceNotFoundErrorCode["ROLE_DOES_NOT_EXISTS"] = 100404002] = "ROLE_DOES_NOT_EXISTS";
     AuthResourceNotFoundErrorCode[AuthResourceNotFoundErrorCode["ROLE_PERMISSION_DOES_NOT_EXISTS"] = 100404003] = "ROLE_PERMISSION_DOES_NOT_EXISTS";
-})(AuthResourceNotFoundErrorCode = exports.AuthResourceNotFoundErrorCode || (exports.AuthResourceNotFoundErrorCode = {}));
+})(AuthResourceNotFoundErrorCode || (exports.AuthResourceNotFoundErrorCode = AuthResourceNotFoundErrorCode = {}));
 /**
  * Authentication error codes - 401000.
  */
@@ -99,7 +99,7 @@ var AuthAuthenticationErrorCode;
     AuthAuthenticationErrorCode[AuthAuthenticationErrorCode["MISSING_AUTHENTICATION_TOKEN"] = 100401001] = "MISSING_AUTHENTICATION_TOKEN";
     AuthAuthenticationErrorCode[AuthAuthenticationErrorCode["INVALID_TOKEN"] = 100401002] = "INVALID_TOKEN";
     AuthAuthenticationErrorCode[AuthAuthenticationErrorCode["USER_NOT_AUTHENTICATED"] = 100401003] = "USER_NOT_AUTHENTICATED";
-})(AuthAuthenticationErrorCode = exports.AuthAuthenticationErrorCode || (exports.AuthAuthenticationErrorCode = {}));
+})(AuthAuthenticationErrorCode || (exports.AuthAuthenticationErrorCode = AuthAuthenticationErrorCode = {}));
 /**
  * Authentication JWT token types definitions.
  */
@@ -111,6 +111,6 @@ var AuthJwtTokenType;
     AuthJwtTokenType["USER_RESET_USERNAME"] = "USER_RESET_USERNAME";
     AuthJwtTokenType["USER_RESET_PASSWORD"] = "USER_RESET_PASSWORD";
     AuthJwtTokenType["USER_LOGIN_MAGIC"] = "USER_LOGIN_MAGIC";
-})(AuthJwtTokenType = exports.AuthJwtTokenType || (exports.AuthJwtTokenType = {}));
+})(AuthJwtTokenType || (exports.AuthJwtTokenType = AuthJwtTokenType = {}));
 exports.AuthServiceErrorPrefix = 100;
 //# sourceMappingURL=types.js.map

@@ -1,6 +1,7 @@
-import { Migrations, MySqlConnManager } from 'kalmia-sql-lib';
+import { MySqlConnManager } from 'kalmia-sql-lib';
 import * as mysql from 'mysql2/promise';
 import * as path from 'path';
+import { Migrations } from './migrations';
 
 /**
  * Connects to database.

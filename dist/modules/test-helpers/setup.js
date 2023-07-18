@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.cleanDatabase = exports.closeConnectionToDb = exports.connectToDb = void 0;
 const kalmia_sql_lib_1 = require("kalmia-sql-lib");
 const path = require("path");
+const migrations_1 = require("./migrations");
 /**
  * Connects to database.
  * @returns Database connection.
@@ -10,7 +11,7 @@ const path = require("path");
 const connectToDb = async () => {
     const conn = await kalmia_sql_lib_1.MySqlConnManager.getInstance().getConnection();
     const migrationsPath = path.join(__dirname, '..', '..', 'migration-scripts', 'migrations');
-    const migrations = new kalmia_sql_lib_1.Migrations();
+    const migrations = new migrations_1.Migrations();
     await migrations.init({
         path: migrationsPath,
         tableName: 'auth_migrations',
@@ -32,7 +33,7 @@ exports.closeConnectionToDb = closeConnectionToDb;
  */
 const cleanDatabase = async () => {
     const migrationsPath = path.join(__dirname, '..', '..', 'migration-scripts', 'migrations');
-    const migrations = new kalmia_sql_lib_1.Migrations();
+    const migrations = new migrations_1.Migrations();
     await migrations.init({
         path: migrationsPath,
         tableName: 'auth_migrations',
