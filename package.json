@@ -1,6 +1,6 @@
 {
   "name": "kalmia-mysql-auth-api",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "MySQL auth package for Kalmia.",
   "main": "dist/index.js",
   "scripts": {
@@ -32,9 +32,9 @@
   "license": "UNLICENSED",
   "homepage": "https://bitbucket.org/kalmiadevs/kalmia-mysql-auth-api#readme",
   "devDependencies": {
+    "@faker-js/faker": "^8.0.2",
     "@types/bcryptjs": "^2.4.2",
     "@types/faker": "^5.5.8",
-    "@faker-js/faker": "^7.4.0",
     "@types/jest": "^27.0.0",
     "@types/jsonwebtoken": "^8.5.4",
     "@types/node": "^16.4.4",
@@ -52,13 +52,13 @@
     "jest": "^29.5.0",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.4"
+    "typescript": "^4.9.5"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.5.1",
-    "kalmia-sql-lib": "git+https://github.com/kalmiallc/kalmia-sql-lib.git",
     "kalmia-common-lib": "git+https://github.com/kalmiallc/kalmia-common-lib",
+    "kalmia-sql-lib": "git+https://github.com/kalmiallc/kalmia-sql-lib.git",
     "mysql2": "^3.2.3",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^5.0.0",
@@ -68,7 +68,7 @@
     "@rawmodel/core": "^3.3.4",
     "@rawmodel/parsers": "^3.3.4",
     "@rawmodel/validators": "^3.3.4",
-    "dotenv": "^16.0.3",
-    "mysql2": "^3.2.3"
+    "dotenv": "^16.3.1",
+    "mysql2": "^3.6.0"
   }
 }
