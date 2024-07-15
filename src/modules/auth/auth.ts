@@ -14,7 +14,6 @@ import { Role } from '../auth-user/models/role.model';
 import { Token } from '../token/token.model';
 import { IAuthResponse, INewPermission, IUpdatePermission, PermissionPass } from './interfaces';
 import { SignOptions } from 'jsonwebtoken';
-import { env } from 'process';
 
 /**
  * Authorization service.

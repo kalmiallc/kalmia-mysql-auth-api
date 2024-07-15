@@ -24,7 +24,7 @@ export class Role extends BaseModel {
     parser: { resolver: integerParser() },
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
     serializable: [SerializeFor.ALL, SerializeFor.ADMIN]
-    })
+  })
   public id: number;
 
   /**
@@ -35,16 +35,16 @@ export class Role extends BaseModel {
     populatable: [PopulateFor.DB, PopulateFor.ADMIN],
     serializable: [SerializeFor.ALL, SerializeFor.ADMIN, SerializeFor.INSERT_DB, SerializeFor.UPDATE_DB],
     validators: [
-    {
-    resolver: presenceValidator(),
-    code: AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT
-    },
-    {
-    resolver: uniqueFieldWithIdValidator(AuthDbTables.ROLES, 'name'),
-    code: AuthValidatorErrorCode.ROLE_NAME_ALREADY_TAKEN
-    }
+      {
+        resolver: presenceValidator(),
+        code: AuthValidatorErrorCode.ROLE_NAME_NOT_PRESENT
+      },
+      {
+        resolver: uniqueFieldWithIdValidator(AuthDbTables.ROLES, 'name'),
+        code: AuthValidatorErrorCode.ROLE_NAME_ALREADY_TAKEN
+      }
     ]
-    })
+  })
   public name: string;
 
   /**
@@ -56,7 +56,7 @@ export class Role extends BaseModel {
     serializable: [SerializeFor.ALL, SerializeFor.ADMIN],
     defaultValue: () => [],
     emptyValue: () => []
-    })
+  })
   public rolePermissions: RolePermission[];
 
   /**

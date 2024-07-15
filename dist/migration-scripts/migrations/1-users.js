@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.downgrade = exports.upgrade = void 0;
+exports.upgrade = upgrade;
+exports.downgrade = downgrade;
 const kalmia_sql_lib_1 = require("kalmia-sql-lib");
 const types_1 = require("../../config/types");
 async function upgrade(queryFn) {
@@ -19,11 +20,9 @@ async function upgrade(queryFn) {
     PRIMARY KEY (\`id\`));
   `);
 }
-exports.upgrade = upgrade;
 async function downgrade(queryFn) {
     await queryFn(`
     DROP TABLE IF EXISTS \`${types_1.AuthDbTables.USERS}\`;
   `);
 }
-exports.downgrade = downgrade;
 //# sourceMappingURL=1-users.js.map

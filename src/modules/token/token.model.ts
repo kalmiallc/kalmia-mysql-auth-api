@@ -27,7 +27,7 @@ export class Token extends BaseModel {
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB],
     validators: []
-    })
+  })
   public user_id: number;
 
   /**
@@ -37,7 +37,7 @@ export class Token extends BaseModel {
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL, SerializeFor.INSERT_DB]
-    })
+  })
   public subject: string;
 
   /**
@@ -47,7 +47,7 @@ export class Token extends BaseModel {
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.ALL],
     serializable: [SerializeFor.ADMIN]
-    })
+  })
   public exp: string | number;
 
   /**
@@ -59,7 +59,7 @@ export class Token extends BaseModel {
     parser: { resolver: dateParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL]
-    })
+  })
   public expiresAt: Date;
 
   /**
@@ -70,7 +70,7 @@ export class Token extends BaseModel {
     parser: { resolver: stringParser() },
     populatable: [PopulateFor.DB],
     serializable: [SerializeFor.ALL]
-    })
+  })
   public token: string;
 
   /**
@@ -79,9 +79,9 @@ export class Token extends BaseModel {
    */
   @prop({
     getter() {
-    return this.token ? createHash('sha256').update(this.token).digest('hex') : null;
+      return this.token ? createHash('sha256').update(this.token).digest('hex') : null;
     }
-    })
+  })
   private _tokenHash: string;
 
   /**
@@ -92,7 +92,7 @@ export class Token extends BaseModel {
   @prop({
     populatable: [],
     serializable: []
-    })
+  })
   public payload: any;
 
 

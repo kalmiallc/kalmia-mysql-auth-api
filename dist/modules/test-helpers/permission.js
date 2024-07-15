@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.insertRoleWithPermissions = void 0;
+exports.insertRoleWithPermissions = insertRoleWithPermissions;
 const role_permission_model_1 = require("../auth-user/models/role-permission.model");
 const role_model_1 = require("../auth-user/models/role.model");
 /**
@@ -20,5 +20,4 @@ async function insertRoleWithPermissions(roleName, permissions) {
     await role.populatePermissions();
     return role;
 }
-exports.insertRoleWithPermissions = insertRoleWithPermissions;
 //# sourceMappingURL=permission.js.map
